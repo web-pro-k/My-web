@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SLUSHY | نظام إدارة الطلبات</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fontsource@latest/cinzel/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fontsource@latest/tajawal/index.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Tajawal:wght@400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #080808; 
+            color: #e5e7eb; 
+            overflow-x: hidden; 
+        }
+
+        .brand-font { font-family: 'Cinzel', serif; }
+        
+        .glass {
+            background: rgba(18, 18, 18, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fadeInUp 0.6s ease-out forwards; }
+
+        @keyframes floatGlow {
+            0%, 100% { transform: translate(0, 0); opacity: 0.2; }
+            50% { transform: translate(-30px, 30px); opacity: 0.4; }
+        }
+        .bg-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #f97316 0%, transparent 70%);
+            filter: blur(100px);
+            z-index: -1;
+            animation: floatGlow 15s infinite ease-in-out;
+        }
+
+        .product-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .product-card:hover { transform: translateY(-10px); }
+
+        .btn-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; }
+        
+        .hidden-section { display: none !important; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 15px;
+            border-radius: 15px;
+            width: 100%;
+            outline: none;
+            transition: 0.3s;
+        }
+        .input-field:focus { border-color: #f97316; background: rgba(255, 255, 255, 0.08); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div class="bg-glow" style="top: -200px; right: -200px;"></div>
+    <div class="bg-glow" style="bottom: -200px; left: -200px; background: radial-gradient(circle, #431407 0%, transparent 70%);"></div>
+
+    <header class="w-full p-5 flex justify-between items-center glass sticky top-0 z-50">
+        <div class="text-3xl font-black brand-font text-orange-500 tracking-tighter">SLUSHY</div>
+        
+        <div id="customer-nav" class="hidden-section flex items-center gap-4">
+            <button onclick="goHome()" class="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-gray-400 text-sm font-bold border border-white/10 hover:text-red-500 transition">
+                <i class="fas fa-sign-out-alt"></i> خروج
+            </button>
+            <button onclick="toggleCart()" id="cart-btn" class="relative p-2 text-orange-500 bg-orange-500/10 rounded-xl border border-orange-500/20">
+                <i class="fas fa-shopping-basket text-2xl"></i>
+                <span id="cart-count" class="absolute -top-1 -right-1 bg-white text-orange-600 text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden shadow-lg">0</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+
+        <!-- واجهة الاختيار الرئيسية -->
+        <section id="role-selection" class="flex flex-col items-center justify-center min-h-[65vh] gap-12">
+            <div class="text-center animate-fade-up">
+                <h1 class="text-6xl font-black text-white mb-4 brand-font">SLUSHY</h1>
+                <p class="text-gray-400 text-lg">أهلاً بك، يرجى اختيار واجهة الدخول</p>
+            </div>
+            <div class="flex flex-col w-full max-w-sm gap-5 animate-fade-up" style="animation-delay: 0.2s">
+                <button onclick="showCustomerView()" class="btn-orange py-6 rounded-[2.5rem] text-2xl font-bold shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition">
+                    <i class="fas fa-utensils"></i> قائمة الطعام
+                </button>
+                <button onclick="promptAdminLogin()" class="glass py-6 rounded-[2.5rem] text-2xl font-bold flex items-center justify-center gap-4 active:scale-95 transition border border-white/5">
+                    <i class="fas fa-user-shield"></i> لوحة الإدارة
+                </button>
+            </div>
+        </section>
+
+        <!-- واجهة الزبون -->
+        <section id="customer-view" class="hidden-section">
+            <div id="category-tabs" class="flex gap-3 overflow-x-auto pb-6 scrollbar-hide animate-fade-up"></div>
+            <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+        </section>
+
+        <!-- لوحة الإدارة -->
+        <section id="admin-dashboard" class="hidden-section">
+            <div class="flex items-center justify-between mb-10 border-b border-white/5 animate-fade-up">
+                <div class="flex gap-6">
+                    <button onclick="switchAdminTab('orders')" id="tab-btn-orders" class="text-orange-500 border-b-4 border-orange-500 pb-4 px-2 font-bold transition text-lg">الطلبات</button>
+                    <button onclick="switchAdminTab('products')" id="tab-btn-products" class="text-gray-400 pb-4 px-2 font-bold transition text-lg">الإعدادات</button>
+                </div>
+                <button onclick="goHome()" class="flex items-center gap-2 bg-red-500/10 px-5 py-2 rounded-2xl text-red-500 text-sm font-black border border-red-500/20 hover:bg-red-500 hover:text-white transition">
+                    <i class="fas fa-power-off"></i> خروج
+                </button>
+            </div>
+
+            <div id="admin-orders-tab" class="animate-fade-up">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+                    <div class="glass p-8 rounded-[2.5rem] text-center">
+                        <span class="text-gray-400 text-sm block mb-1">إيرادات اليوم</span>
+                        <div id="today-revenue" class="text-3xl font-black text-green-500">0 د.ع</div>
+                    </div>
+                    <div class="glass p-8 rounded-[2.5rem] text-center">
+                        <span class="text-gray-400 text-sm block mb-1">الطلبات المستلمة</span>
+                        <div id="today-count" class="text-3xl font-black text-orange-500">0</div>
+                    </div>
+                </div>
+                <div id="pending-orders-list" class="grid gap-6"></div>
+                <h3 class="text-gray-600 mt-16 mb-8 font-bold text-center">السجل المكتمل</h3>
+                <div id="approved-orders-list" class="grid gap-4 opacity-40"></div>
+            </div>
+
+            <div id="admin-products-tab" class="hidden-section animate-fade-up">
+                <!-- إدارة الأقسام والمنتجات كما هي -->
+                <div class="glass p-8 rounded-[2.5rem] mb-10">
+                    <h4 class="font-bold mb-6 text-orange-500 text-xl">إدارة الأقسام</h4>
+                    <div class="flex gap-4">
+                        <input type="text" id="new-cat-name" placeholder="اسم القسم الجديد" class="bg-black/50 p-5 rounded-2xl flex-grow outline-none border border-white/5 focus:border-orange-500 transition">
+                        <button onclick="addCategory()" class="btn-orange px-10 rounded-2xl font-bold">إضافة</button>
+                    </div>
+                    <div id="admin-cat-list" class="flex flex-wrap gap-4 mt-8"></div>
+                </div>
+
+                <div class="glass p-8 rounded-[2.5rem]">
+                    <h4 class="font-bold mb-8 text-orange-500 text-xl">إضافة منتج</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <input type="text" id="new-name" placeholder="اسم المنتج" class="glass p-5 rounded-2xl outline-none">
+                        <input type="number" id="new-price" placeholder="السعر" class="glass p-5 rounded-2xl outline-none">
+                        <select id="new-category-select" class="glass p-5 rounded-2xl outline-none"></select>
+                        <div class="flex items-center gap-4">
+                            <label class="glass p-5 rounded-2xl cursor-pointer flex-grow text-center border-2 border-dashed border-white/10 hover:bg-white/5 transition">
+                                <i class="fas fa-image ml-2 text-orange-500"></i> ارفع صورة
+                                <input type="file" id="new-image-file" accept="image/*" class="hidden" onchange="previewImage(this)">
+                            </label>
+                            <img id="image-preview" class="w-20 h-20 rounded-2xl object-cover hidden border border-white/10">
+                        </div>
+                    </div>
+                    <button onclick="addProduct()" class="btn-orange w-full mt-10 py-6 rounded-3xl font-black text-xl shadow-xl active:scale-95 transition">حفظ في القائمة</button>
+                </div>
+                <div id="admin-products-list" class="grid gap-4 mt-12"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- السلة المحدثة -->
+    <div id="cart-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleCart()"></div>
+        <div class="absolute left-0 top-0 bottom-0 w-full max-w-sm glass p-6 flex flex-col">
+            <h2 class="text-3xl font-black mb-6 text-orange-500">سلتك</h2>
+            
+            <div id="cart-items" class="flex-grow overflow-y-auto space-y-4 scrollbar-hide"></div>
+            
+            <!-- حقول معلومات الزبون -->
+            <div class="mt-6 space-y-3 border-t border-white/10 pt-6">
+                <input type="text" id="order-name" placeholder="الاسم الكامل (مطلوب)" class="input-field">
+                <input type="tel" id="order-phone" placeholder="رقم الهاتف (مطلوب)" class="input-field">
+                <input type="text" id="order-car" placeholder="نوع السيارة (اختياري)" class="input-field">
+                <textarea id="order-notes" placeholder="أي ملاحظات إضافية؟" class="input-field h-20 resize-none"></textarea>
+            </div>
+
+            <div class="pt-6">
+                <div class="flex justify-between text-xl font-bold mb-4">
+                    <span>المجموع:</span>
+                    <span id="cart-total" class="text-orange-500">0 د.ع</span>
+                </div>
+                <button onclick="submitOrder()" class="btn-orange w-full py-5 rounded-[2rem] font-black text-lg shadow-2xl active:scale-95 transition">إرسال الطلب</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- تفاصيل الطلب للمسؤول -->
+    <div id="order-details-modal" class="fixed inset-0 bg-black/90 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl animate-fade-up">
+            <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <h3 id="modal-order-title" class="font-black text-2xl text-orange-500"></h3>
+                <span class="text-gray-500">تفاصيل الفاتورة</span>
+            </div>
+            <div id="customer-info-box" class="p-6 bg-white/5 border-b border-white/5 grid grid-cols-2 gap-4 text-sm"></div>
+            <div id="order-items-container" class="p-8 overflow-y-auto max-h-[40vh] space-y-5"></div>
+            <div id="order-footer-actions" class="p-8 flex flex-col gap-4"></div>
+            <button onclick="closeOrderDetails()" class="bg-white/5 py-5 text-gray-400 font-bold border-t border-white/5">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- تسجيل دخول المسؤول -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/95 z-[100] hidden flex items-center justify-center p-6">
+        <div class="glass p-12 rounded-[3.5rem] w-full max-w-md text-center shadow-2xl animate-fade-up">
+            <h3 class="text-3xl font-black mb-8 text-white tracking-widest">الدخول للإدارة</h3>
+            <input type="password" id="admin-pass" placeholder="••••" class="w-full bg-black/40 p-6 rounded-2xl mb-8 text-center border border-white/10 outline-none font-black text-3xl tracking-[0.5em] focus:border-orange-500 transition">
+            <button onclick="verifyAdmin()" class="w-full btn-orange py-6 rounded-2xl font-bold text-xl shadow-xl">دخول</button>
+            <button onclick="document.getElementById('admin-login-modal').classList.add('hidden')" class="mt-6 text-gray-500 font-bold">إلغاء</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = { databaseURL: "https://slus-n888-default-rtdb.firebaseio.com" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let categories = [];
+        let products = [];
+        let orders = [];
+        let cart = [];
+        let selectedCategory = "";
+        let base64Image = "";
+
+        // Sync Data
+        db.ref('categories').on('value', s => { 
+            categories = s.val() || []; 
+            if(!selectedCategory && categories.length > 0) selectedCategory = categories[0];
+            updateUI(); 
+        });
+        db.ref('products').on('value', s => { 
+            const data = s.val() || {};
+            products = Object.keys(data).map(k => ({id: k, ...data[k]}));
+            updateUI(); 
+        });
+        db.ref('orders').on('value', s => {
+            const data = s.val() || {};
+            orders = Object.keys(data).map(k => ({id: k, ...data[k]}));
+            renderOrders();
+        });
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    base64Image = e.target.result;
+                    const img = document.getElementById('image-preview');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // إرسال الطلب مع بيانات الزبون
+        async function submitOrder() {
+            if(cart.length === 0) return;
+            
+            const name = document.getElementById('order-name').value.trim();
+            const phone = document.getElementById('order-phone').value.trim();
+            const car = document.getElementById('order-car').value.trim();
+            const notes = document.getElementById('order-notes').value.trim();
+
+            if(!name || !phone) {
+                alert("يرجى إدخال الاسم ورقم الهاتف لإتمام الطلب");
+                return;
+            }
+
+            const today = new Date().toLocaleDateString('en-CA');
+            const counterRef = db.ref('order_counter/' + today);
+            const result = await counterRef.transaction(cv => (cv || 0) + 1);
+            const dailyNumber = result.snapshot.val();
+            const orderId = "order_" + Date.now();
+            
+            const orderData = {
+                id: orderId, dailyNumber, dateKey: today, timestamp: Date.now(),
+                items: cart, total: cart.reduce((s, i) => s + (i.price * i.qty), 0),
+                status: 'pending',
+                customerName: name,
+                customerPhone: phone,
+                customerCar: car || "غير محدد",
+                customerNotes: notes || "لا يوجد"
+            };
+
+            await db.ref('orders/' + orderId).set(orderData);
+            
+            // تنظيف السلة والحقول
+            cart = []; 
+            document.getElementById('order-name').value = "";
+            document.getElementById('order-phone').value = "";
+            document.getElementById('order-car').value = "";
+            document.getElementById('order-notes').value = "";
+            
+            updateCartUI(); 
+            toggleCart();
+            alert(`تم إرسال طلبك بنجاح! رقمك هو: ${dailyNumber}`);
+        }
+
+        function renderOrders() {
+            const todayKey = new Date().toLocaleDateString('en-CA');
+            const todayOrders = orders.filter(o => o.dateKey === todayKey);
+            document.getElementById('today-revenue').innerText = todayOrders.reduce((sum, o) => sum + o.total, 0).toLocaleString() + " د.ع";
+            document.getElementById('today-count').innerText = todayOrders.length;
+
+            const pending = orders.filter(o => o.status === 'pending').sort((a,b) => b.timestamp - a.timestamp);
+            const approved = orders.filter(o => o.status === 'approved').sort((a,b) => b.timestamp - a.timestamp);
+
+            document.getElementById('pending-orders-list').innerHTML = pending.map(o => `
+                <div onclick="viewOrderDetails('${o.id}')" class="glass p-6 rounded-[2.5rem] cursor-pointer border-r-8 border-orange-500 animate-fade-up flex justify-between items-center hover:bg-orange-500/5 transition">
+                    <div>
+                        <div class="font-black text-orange-500 text-xl">#${o.dailyNumber} - ${o.customerName}</div>
+                        <div class="text-xs text-gray-500 mt-1">${new Date(o.timestamp).toLocaleTimeString('ar-EG')}</div>
+                    </div>
+                    <div class="text-2xl font-black">${o.total.toLocaleString()} د.ع</div>
+                </div>
+            `).join('');
+
+            document.getElementById('approved-orders-list').innerHTML = approved.map(o => `
+                <div onclick="viewOrderDetails('${o.id}')" class="glass p-4 rounded-2xl cursor-pointer flex justify-between items-center border-r-4 border-green-600 mb-2">
+                    <div class="font-bold text-sm">مكتمل #${o.dailyNumber} (${o.customerName})</div>
+                    <div class="font-black text-green-500">${o.total.toLocaleString()} د.ع</div>
+                </div>
+            `).join('');
+        }
+
+        function viewOrderDetails(id) {
+            const order = orders.find(o => o.id === id);
+            if(!order) return;
+            
+            document.getElementById('modal-order-title').innerText = `طلب #${order.dailyNumber}`;
+            
+            // عرض معلومات الزبون للمسؤول
+            const infoBox = document.getElementById('customer-info-box');
+            infoBox.innerHTML = `
+                <div><span class="text-gray-500">الاسم:</span> <br> <b>${order.customerName}</b></div>
+                <div><span class="text-gray-500">الهاتف:</span> <br> <b class="text-orange-500">${order.customerPhone}</b></div>
+                <div><span class="text-gray-500">السيارة:</span> <br> <b>${order.customerCar}</b></div>
+                <div><span class="text-gray-500">ملاحظات:</span> <br> <b class="text-xs">${order.customerNotes}</b></div>
+            `;
+
+            const container = document.getElementById('order-items-container');
+            container.innerHTML = order.items.map(item => `
+                <div class="flex items-center gap-5 glass p-4 rounded-[1.5rem]">
+                    <img src="${item.image}" class="w-12 h-12 rounded-xl object-cover">
+                    <div class="flex-grow">
+                        <div class="font-bold text-sm">${item.name}</div>
+                        <div class="text-orange-500 font-bold text-xs">العدد: ${item.qty}</div>
+                    </div>
+                    <div class="font-black text-sm">${(item.price * item.qty).toLocaleString()}</div>
+                </div>
+            `).join('') + `<div class="text-center pt-4 text-2xl font-black text-orange-500">${order.total.toLocaleString()} د.ع</div>`;
+
+            const footer = document.getElementById('order-footer-actions');
+            if(order.status === 'pending') {
+                footer.innerHTML = `
+                    <button onclick="db.ref('orders/${id}/status').set('approved'); closeOrderDetails();" class="btn-orange py-5 rounded-2xl font-bold text-lg shadow-lg">تجهيز الطلب</button>
+                    <button onclick="if(confirm('حذف؟')) {db.ref('orders/${id}').remove(); closeOrderDetails();}" class="bg-red-500/10 text-red-500 py-3 rounded-2xl font-bold">إلغاء</button>
+                `;
+            } else {
+                footer.innerHTML = `<button onclick="if(confirm('حذف؟')) {db.ref('orders/${id}').remove(); closeOrderDetails();}" class="bg-red-600 text-white py-4 rounded-2xl font-bold">حذف نهائي من السجل</button>`;
+            }
+            document.getElementById('order-details-modal').classList.remove('hidden');
+        }
+
+        // Functions for Admin Controls
+        function toggleProductAvailability(id, currentStatus) {
+            db.ref('products/' + id + '/available').set(!currentStatus);
+        }
+
+        function goHome() {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden-section'));
+            document.getElementById('customer-nav').classList.add('hidden-section');
+            document.getElementById('role-selection').classList.remove('hidden-section');
+        }
+
+        function showCustomerView() {
+            document.getElementById('role-selection').classList.add('hidden-section');
+            document.getElementById('customer-view').classList.remove('hidden-section');
+            document.getElementById('customer-nav').classList.remove('hidden-section');
+        }
+
+        function promptAdminLogin() { document.getElementById('admin-login-modal').classList.remove('hidden'); }
+        
+        function verifyAdmin() { 
+            if(document.getElementById('admin-pass').value === "#123#") { 
+                document.getElementById('admin-login-modal').classList.add('hidden'); 
+                document.getElementById('role-selection').classList.add('hidden-section'); 
+                document.getElementById('admin-dashboard').classList.remove('hidden-section'); 
+                document.getElementById('admin-pass').value = "";
+            } else alert("خطأ!"); 
+        }
+
+        function switchAdminTab(tab) {
+            document.getElementById('admin-orders-tab').classList.toggle('hidden-section', tab !== 'orders');
+            document.getElementById('admin-products-tab').classList.toggle('hidden-section', tab !== 'products');
+        }
+
+        function addToCart(pid) {
+            const p = products.find(x => x.id === pid);
+            if(p.available === false) return; // منع الإضافة إذا كان غير متوفر
+            const exist = cart.find(x => x.id === pid);
+            if(exist) exist.qty++; else cart.push({...p, qty: 1});
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cart-items');
+            list.innerHTML = cart.map(i => `
+                <div class="flex justify-between items-center glass p-4 rounded-[1.2rem] animate-fade-up">
+                    <div class="text-xs font-bold">${i.name}</div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="changeQty('${i.id}', -1)" class="w-7 h-7 bg-white/5 rounded-full flex items-center justify-center">-</button>
+                        <span class="font-black text-orange-500">${i.qty}</span>
+                        <button onclick="changeQty('${i.id}', 1)" class="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center font-bold">+</button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('cart-total').innerText = cart.reduce((s, i) => s + (i.price * i.qty), 0).toLocaleString() + " د.ع";
+            document.getElementById('cart-count').innerText = cart.length;
+            document.getElementById('cart-count').classList.toggle('hidden', cart.length === 0);
+        }
+
+        function changeQty(id, d) {
+            const i = cart.find(x => x.id === id);
+            i.qty += d;
+            if(i.qty <= 0) cart = cart.filter(x => x.id !== id);
+            updateCartUI();
+        }
+
+        function toggleCart() { document.getElementById('cart-modal').classList.toggle('hidden'); }
+        function closeOrderDetails() { document.getElementById('order-details-modal').classList.add('hidden'); }
+
+        function addCategory() {
+            const name = document.getElementById('new-cat-name').value.trim();
+            if(name && !categories.includes(name)) {
+                categories.push(name); db.ref('categories').set(categories);
+                document.getElementById('new-cat-name').value = "";
+            }
+        }
+
+        function addProduct() {
+            const name = document.getElementById('new-name').value;
+            const price = parseInt(document.getElementById('new-price').value);
+            const cat = document.getElementById('new-category-select').value;
+            if(!name || !price || !base64Image || !cat) return alert("أكمل البيانات");
+            const id = "p_" + Date.now();
+            db.ref('products/' + id).set({ name, price, category: cat, image: base64Image, available: true });
+            base64Image = ""; document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('new-name').value = ""; document.getElementById('new-price').value = "";
+        }
+
+        function updateUI() {
+            // تحديث التبويبات
+            document.getElementById('category-tabs').innerHTML = categories.map(c => `
+                <button onclick="selectedCategory='${c}'; updateUI();" class="px-10 py-4 rounded-full whitespace-nowrap font-bold transition-all ${selectedCategory === c ? 'btn-orange shadow-2xl scale-105' : 'glass text-gray-500'}">${c}</button>
+            `).join('');
+            
+            // تحديث قائمة المنتجات للزبون مع مراعاة التوفر
+            document.getElementById('products-grid').innerHTML = products.filter(p => p.category === selectedCategory).map((p, index) => {
+                const isAvailable = p.available !== false;
+                return `
+                <div class="product-card glass rounded-[3rem] overflow-hidden relative shadow-2xl animate-fade-up ${!isAvailable ? 'grayscale opacity-80' : ''}" style="animation-delay: ${index * 0.05}s">
+                    <img src="${p.image}" class="w-full h-60 object-cover">
+                    ${!isAvailable ? '<div class="absolute inset-0 bg-black/60 flex items-center justify-center font-black text-white text-xl">غير متوفر حالياً</div>' : ''}
+                    <div class="p-8">
+                        <h4 class="font-bold text-2xl text-white mb-3">${p.name}</h4>
+                        <div class="flex justify-between items-center">
+                            <span class="text-orange-500 font-black text-2xl">${p.price.toLocaleString()} <small class="text-xs">د.ع</small></span>
+                            <button onclick="${isAvailable ? `addToCart('${p.id}')` : ''}" class="${isAvailable ? 'btn-orange' : 'bg-gray-700'} p-5 rounded-2xl active:scale-90 transition">
+                                <i class="fas ${isAvailable ? 'fa-cart-plus' : 'fa-times'} text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // تحديث قائمة المنتجات في الإدارة مع زر On/Off
+            document.getElementById('admin-products-list').innerHTML = products.map(p => `
+                <div class="glass p-5 rounded-3xl flex items-center gap-6 animate-fade-up">
+                    <img src="${p.image}" class="w-20 h-20 rounded-2xl object-cover">
+                    <div class="flex-grow">
+                        <div class="font-bold text-lg">${p.name}</div>
+                        <div class="text-orange-500 font-black">${p.price.toLocaleString()} د.ع</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleProductAvailability('${p.id}', ${p.available !== false})" class="px-4 py-2 rounded-xl font-bold transition ${p.available !== false ? 'bg-green-500/20 text-green-500 border border-green-500/50' : 'bg-red-500/20 text-red-500 border border-red-500/50'}">
+                            ${p.available !== false ? 'On' : 'Off'}
+                        </button>
+                        <button onclick="if(confirm('حذف؟')) db.ref('products/${p.id}').remove()" class="bg-red-500/10 text-red-500 p-4 rounded-xl">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`).join('');
+
+            document.getElementById('admin-cat-list').innerHTML = categories.map(c => `
+                <div class="glass px-8 py-3 rounded-full flex items-center gap-5">
+                    <span class="font-bold">${c}</span>
+                    <button onclick="if(confirm('حذف؟')){ categories=categories.filter(x=>x!=='${c}'); db.ref('categories').set(categories); }" class="text-red-500">حذف</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('new-category-select').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+    </script>
+</body>
+</html>
