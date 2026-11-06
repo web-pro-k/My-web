@@ -61,7 +61,6 @@
       border-color: var(--accent-blue);
     }
 
-    /* الصفحة الأولى: شاشة الاختيار الرئيسية */
     #page-login {
       display: flex;
       flex-direction: column;
@@ -147,7 +146,6 @@
       background: #4752c4;
     }
 
-    /* الصفحة الثانية: صالة الطاولات */
     #page-tables {
       display: none;
       width: 100%;
@@ -285,7 +283,6 @@
       border-color: #2c2f40;
     }
 
-    /* النافذة المنبثقة لإدخال اسم اللاعب */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -344,7 +341,6 @@
     .btn-confirm { background: var(--accent-green); color: #fff; }
     .btn-cancel { background: var(--accent-red); color: #fff; }
 
-    /* شاشة العد التنازلي على الرقعة */
     .countdown-overlay {
       position: absolute;
       top: 0;
@@ -369,7 +365,6 @@
       margin-top: 10px;
     }
 
-    /* الصفحة الثالثة: شاشة الشطرنج */
     #page-game {
       display: none;
       width: 100%;
@@ -485,7 +480,6 @@
       letter-spacing: 1px;
     }
 
-    /* رقعة الشطرنج */
     #chessboard {
       width: 440px;
       height: 440px;
@@ -538,7 +532,6 @@
       pointer-events: none;
     }
 
-    /* الشريط الجانبي */
     .sidebar {
       display: flex;
       flex-direction: column;
@@ -648,22 +641,19 @@
     }
   </style>
 
-  <!-- استدعاء حزمة SDK لـ Firebase Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
-  <!-- شريط تبديل اللغة (English / العربية) -->
   <div class="lang-switcher-bar">
     <button class="btn-lang" onclick="toggleLanguage()">🌐 English / العربية</button>
   </div>
 
-  <!-- الصفحة الأولى: شاشة الاختيار الرئيسية -->
   <div id="page-login">
     <div class="login-card">
-      <h1 id="txt-login-title">🏆 بطولة الشطرنج</h1>
-      <p id="txt-login-desc">اختر صفة الدخول للانتقال إلى صالة الطاولات</p>
+      <h1 id="txt-login-title">🏆 بطولة الشطرنج أونلاين</h1>
+      <p id="txt-login-desc">اختر صفة الدخول للانتقال إلى صالة الطاولات السحابية</p>
 
       <div class="role-grid">
         <div class="role-option selected" onclick="selectRole('player', this)">
@@ -681,7 +671,6 @@
     </div>
   </div>
 
-  <!-- الصفحة الثانية: صالة الطاولات -->
   <div id="page-tables">
     <div class="tables-header">
       <h2 id="txt-tables-title">♟️ صالة الطاولات المتاحة</h2>
@@ -691,7 +680,6 @@
     <div class="tables-grid" id="tables-grid"></div>
   </div>
 
-  <!-- نافذة إدخال اسم اللاعب -->
   <div class="modal-overlay" id="nameModal">
     <div class="modal-card">
       <h3 id="txt-modal-title">أدخل اسمك للانضمام</h3>
@@ -703,7 +691,6 @@
     </div>
   </div>
 
-  <!-- الصفحة الثالثة: شاشة الشطرنج -->
   <div id="page-game">
     
     <div class="top-user-bar">
@@ -718,7 +705,6 @@
     <div class="arena-container">
       
       <div class="game-area">
-        <!-- بطاقة اللاعب الأسود -->
         <div class="player-card" id="card-black">
           <div class="player-profile">
             <div class="player-badge">
@@ -732,7 +718,6 @@
           <div class="player-timer" id="timer-black">10:00</div>
         </div>
 
-        <!-- رقعة الشطرنج ومعها شاشة العد التنازلي -->
         <div style="position: relative;">
           <div id="chessboard"></div>
           <div id="countdown-overlay" class="countdown-overlay">
@@ -741,7 +726,6 @@
           </div>
         </div>
 
-        <!-- بطاقة اللاعب الأبيض -->
         <div class="player-card active-turn" id="card-white">
           <div class="player-profile">
             <div class="player-badge">
@@ -756,7 +740,6 @@
         </div>
       </div>
 
-      <!-- الجانب الأيسر: الحالة والمشاهدين -->
       <div class="sidebar">
         <div class="panel-card">
           <div class="panel-header">
@@ -787,9 +770,6 @@
   </div>
 
   <script>
-    // ============================================
-    // تهيئة مشروع Firebase ببياناتك السحابية الخاصة
-    // ============================================
     const firebaseConfig = {
       apiKey: "AIzaSyBmHujXvdnXJKIjKWO5UO2cyd0sHgyQJvA",
       authDomain: "chess-arena-cfdeb.firebaseapp.com",
@@ -804,13 +784,16 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    var tablesData = [
+    // القيمة الافتراضية الصريحة للطاولات الخمس لمنع أي undefined
+    var defaultTables = [
       { id: 1, white: null, black: null },
       { id: 2, white: null, black: null },
       { id: 3, white: null, black: null },
       { id: 4, white: null, black: null },
       { id: 5, white: null, black: null }
     ];
+
+    var tablesData = JSON.parse(JSON.stringify(defaultTables));
 
     var currentTableId = null;
     var currentUserRole = 'player'; 
@@ -903,17 +886,24 @@
       }
     };
 
-    // مزامنة الطاولات والدردشة لحظياً من قاعدة البيانات (Realtime Listener)
+    // مزامنة وتنظيف البيانات تلقائياً
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
-      if (val) {
-        tablesData = val;
-        renderTables();
-        if (currentTableId) {
-          updateCurrentGameFromFirebase();
-        }
+      if (val && Array.isArray(val) && val.length > 0) {
+        tablesData = val.map(function(item, idx) {
+          return {
+            id: item.id || (idx + 1),
+            white: (item.white && item.white !== 'undefined') ? item.white : null,
+            black: (item.black && item.black !== 'undefined') ? item.black : null
+          };
+        });
       } else {
+        tablesData = JSON.parse(JSON.stringify(defaultTables));
         db.ref('tables').set(tablesData);
+      }
+      renderTables();
+      if (currentTableId) {
+        updateCurrentGameFromFirebase();
       }
     });
 
@@ -1048,7 +1038,7 @@
       var table = tablesData.find(function(item) { return item.id === tableId; });
       if (!table) return;
 
-      if (table[color] !== null) {
+      if (table[color] !== null && table[color] !== undefined) {
         alert('هذا المقعد مشغول حالياً بـ: ' + table[color]);
         return;
       }
@@ -1118,7 +1108,6 @@
       initGame();
     }
 
-    // مزامنة الدردشة أونلاين
     function listenToChat(tableId) {
       const chatRef = db.ref('chats/table_' + tableId);
       chatRef.on('value', function(snapshot) {
@@ -1149,7 +1138,6 @@
       input.value = '';
     }
 
-    // مزامنة أونلاين لحركات القطع والدور
     function listenToGameState(tableId) {
       db.ref('game_state/table_' + tableId).on('value', function(snapshot) {
         var state = snapshot.val();
@@ -1183,7 +1171,6 @@
       }
     }
 
-    // محرك الشطرنج والتنفيذ
     var unicodePieces = {
       'r': '♜', 'n': '♞', 'q': '♛', 'p': '♟',
       'R': '♖', 'N': '♘', 'Q': '♕', 'P': '♙'
