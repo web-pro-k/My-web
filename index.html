@@ -852,7 +852,7 @@
       }
     };
 
-    // معالجة مرنة للبيانات سواء وصلت كـ Array أو كـ Object من Firebase
+    // مزامنة الطاولات
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       var parsedTables = [];
@@ -936,13 +936,16 @@
     function tryLeaveTable() {
       if (currentTableId !== null && currentUserRole === 'player') {
         var tableIdx = currentTableId - 1;
-        // تفريغ المقعد الخاص بهذا اللاعب فقط دون مسح الطاولة
         db.ref('tables/' + tableIdx + '/' + playerGameColor).set(null);
         
         var otherColor = playerGameColor === 'white' ? 'black' : 'white';
         var table = tablesData.find(function(item) { return item.id === currentTableId; });
         if (!table || !table[otherColor]) {
-          db.ref('game_state/table_' + currentTableId).remove();
+          db.ref('game_state/table_' + currentTableId).set({
+            status: 'waiting',
+            board: startingBoard,
+            currentTurn: 'white'
+          });
           db.ref('chats/table_' + currentTableId).remove();
         }
       }
@@ -1035,7 +1038,6 @@
       currentTableId = pendingTableId;
 
       var tableIdx = pendingTableId - 1;
-      // تحديث المقعد الحالي فقط في قاعدة البيانات دون التأثير على مقعد الخصم
       db.ref('tables/' + tableIdx + '/id').set(pendingTableId);
       db.ref('tables/' + tableIdx + '/' + pendingColor).set(currentUserName);
 
@@ -1145,6 +1147,7 @@
             var wasStarted = gameStarted;
             gameStarted = true;
             gameStatusBadge.textContent = dict[currentLang].statusLive;
+            gameStatusBadge.style.background = 'var(--accent-green)';
             if (!wasStarted) {
               logEvent(dict[currentLang].logStarted);
               startTimer();
@@ -1153,6 +1156,7 @@
           } else {
             gameStarted = false;
             gameStatusBadge.textContent = dict[currentLang].statusWaiting;
+            gameStatusBadge.style.background = '#34495e';
             drawBoard();
           }
         }
@@ -1164,10 +1168,13 @@
         var payload = {
           board: board,
           currentTurn: currentTurn,
-          status: gameStarted ? 'playing' : 'waiting'
+          status: gameStarted ? 'playing' : 'waiting',
+          whiteTime: whiteTime,
+          blackTime: blackTime
         };
         if (extraData) Object.assign(payload, extraData);
-        db.ref('game_state/table_' + currentTableId).update(payload);
+        // نستخدم .set() لضمان حفظ المصفوفة بنجاح وتفادي مشاكل .update() مع 2D Arrays
+        db.ref('game_state/table_' + currentTableId).set(payload);
       }
     }
 
@@ -1181,26 +1188,26 @@
         document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
         document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
         
-        // عند اكتمال وجود كلا اللاعبين
-        if (table.white !== null && table.black !== null) {
-          if (!gameStarted && currentUserRole === 'player') {
-            db.ref('game_state/table_' + currentTableId).once('value', function(snapshot) {
-              var state = snapshot.val();
-              if (!state || state.status !== 'playing') {
-                if (playerGameColor === 'white') {
-                  gameStarted = true;
-                  board = startingBoard.map(function(row) { return row.slice(); });
-                  currentTurn = 'white';
-                  updateGameStateOnFirebase({ status: 'playing', board: board, currentTurn: currentTurn });
-                  startTimer();
-                  drawBoard();
-                }
-              }
-            });
-          }
+        // بمجرد اكتمال وجود اللاعبين الاثنين (الأبيض والأسود)
+        if (table.white && table.black) {
+          db.ref('game_state/table_' + currentTableId).once('value', function(snapshot) {
+            var state = snapshot.val();
+            // أي لاعب (سواء أبيض أو أسود) يقوم ببدء اللعبة إذا لم تكن قد بدأت بعد
+            if (!state || state.status !== 'playing') {
+              var freshBoard = startingBoard.map(function(row) { return row.slice(); });
+              db.ref('game_state/table_' + currentTableId).set({
+                status: 'playing',
+                board: freshBoard,
+                currentTurn: 'white',
+                whiteTime: 600,
+                blackTime: 600
+              });
+            }
+          });
         } else {
           gameStarted = false;
           gameStatusBadge.textContent = t.statusWaiting;
+          gameStatusBadge.style.background = '#34495e';
         }
       }
     }
@@ -1275,10 +1282,8 @@
 
     function drawBoard() {
       boardEl.innerHTML = '';
-      // قلب الرقعة تلقائياً للاعب الأسود لتكون قطعه في جهته
       var isFlipped = (currentUserRole === 'player' && playerGameColor === 'black');
 
-      // ترتيب البطاقات حسب اللون
       if (isFlipped) {
         cardWhite.style.order = '1';
         document.getElementById('board-container').style.order = '2';
