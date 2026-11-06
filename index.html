@@ -784,7 +784,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // القيمة الافتراضية الصريحة للطاولات الخمس لمنع أي undefined
     var defaultTables = [
       { id: 1, white: null, black: null },
       { id: 2, white: null, black: null },
@@ -886,7 +885,6 @@
       }
     };
 
-    // مزامنة وتنظيف البيانات تلقائياً
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       if (val && Array.isArray(val) && val.length > 0) {
@@ -1100,7 +1098,7 @@
       document.getElementById('name-black').textContent = table.black ? table.black : t.pBlackTitle;
 
       document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
-      document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
+      document.getElementById('sub-black').textContent = table.black ? table.black : t.statusReadySub : t.statusWaitingSub;
 
       updateUserRoleText();
       listenToChat(tableId);
@@ -1315,6 +1313,12 @@
           gameStarted = true;
           gameStatusBadge.textContent = t.statusLive;
           logEvent(t.logStarted);
+          
+          // تهيئة الرقعة لأول مرة وإرسالها لـ Firebase ليراها الخصم
+          board = startingBoard.map(function(row) { return row.slice(); });
+          currentTurn = 'white';
+          updateGameStateOnFirebase();
+          
           startTimer();
           drawBoard();
         }
