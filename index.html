@@ -341,30 +341,6 @@
     .btn-confirm { background: var(--accent-green); color: #fff; }
     .btn-cancel { background: var(--accent-red); color: #fff; }
 
-    .countdown-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(18, 19, 26, 0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 20;
-      font-size: 3rem;
-      font-weight: bold;
-      color: var(--accent-gold);
-      display: none;
-    }
-
-    .countdown-overlay span {
-      font-size: 1rem;
-      color: var(--text-main);
-      margin-top: 10px;
-    }
-
     #page-game {
       display: none;
       width: 100%;
@@ -720,10 +696,6 @@
 
         <div style="position: relative;">
           <div id="chessboard"></div>
-          <div id="countdown-overlay" class="countdown-overlay">
-            <div id="countdown-number">5</div>
-            <span id="txt-countdown-sub">ستبدأ المباراة بعد قليل...</span>
-          </div>
         </div>
 
         <div class="player-card active-turn" id="card-white">
@@ -747,7 +719,7 @@
             <span class="badge" id="game-status-badge">بانتظار الخصم</span>
           </div>
           <div class="match-log" id="match-log">
-            <div id="initial-log">[النظام] انضممت إلى الطاولة. يرجى انتظار اكتمال اللاعبين.</div>
+            <div id="initial-log">[النظام] انضممت إلى الطاولة. بانتظار الخصم لبدء اللعب فوراً.</div>
           </div>
         </div>
 
@@ -821,7 +793,6 @@
         pWhiteTitle: 'اللاعب الأول (الأبيض)',
         pBlackTitle: 'اللاعب الثاني (الأسود)',
         statusWaiting: 'بانتظار الخصم',
-        statusCounting: 'جاري العد التنازلي...',
         statusLive: 'مباراة جارية',
         statusWaitingSub: 'بانتظار الخصم...',
         statusReadySub: 'لاعب متصل',
@@ -832,8 +803,8 @@
         alertSpectatorOnly: 'أنت داخل بصفة "مشاهد" فقط، لا يمكنك الدخول كلاعب!',
         alertPlayerWatchDisabled: 'أنت داخل بصفة "لاعب"، لا يمكنك النقر على زر المشاهدة!',
         alertSpectatorMove: 'أنت داخل بصفة "مشاهد"، لا يمكنك تحريك القطع!',
-        alertWaitingOpponent: 'لم يتم اكتمال اللاعبين بعد أو جاري العد التنازلي!',
-        logStarted: '[النظام] انطلاق المباراة أونلاين! الدور للاعب الأبيض.',
+        alertWaitingOpponent: 'بانتظار اكتمال اللاعب الآخر لبدء اللعب!',
+        logStarted: '[النظام] اكتمل الطرفان! انطلقت المباراة فوراً.',
         logCapture: ' أخذ قطعة الخصم',
         timeoutMsg: 'انتهى الوقت! فاز اللاعب: '
       },
@@ -856,7 +827,6 @@
         pWhiteTitle: 'Player 1 (White)',
         pBlackTitle: 'Player 2 (Black)',
         statusWaiting: 'Waiting for Opponent',
-        statusCounting: 'Countdown...',
         statusLive: 'Match Live',
         statusWaitingSub: 'Waiting for opponent...',
         statusReadySub: 'Connected Player',
@@ -867,14 +837,13 @@
         alertSpectatorOnly: 'You entered as a "Spectator" only and cannot join as a player!',
         alertPlayerWatchDisabled: 'You entered as a "Player", you cannot click watch button!',
         alertSpectatorMove: 'You are logged in as a "Spectator"; you cannot move pieces!',
-        alertWaitingOpponent: 'Players not complete yet or countdown in progress!',
-        logStarted: '[System] Online match started! White moves first.',
+        alertWaitingOpponent: 'Waiting for the other player to start!',
+        logStarted: '[System] Both players ready! Match started instantly.',
         logCapture: ' captured opponent piece',
         timeoutMsg: 'Time Out! Winner: '
       }
     };
 
-    // مزامنة حالة الطاولات فورياً
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       if (val && Array.isArray(val) && val.length > 0) {
@@ -958,14 +927,12 @@
 
     function goToTablesPage() {
       if (timerInterval) clearInterval(timerInterval);
-      if (countdownInterval) clearInterval(countdownInterval);
       if (currentTableId) {
         db.ref('chats/table_' + currentTableId).off();
         db.ref('game_state/table_' + currentTableId).off();
       }
       currentTableId = null;
       gameStarted = false;
-      isCountingDown = false;
       document.getElementById('page-login').style.display = 'none';
       document.getElementById('page-game').style.display = 'none';
       document.getElementById('page-tables').style.display = 'flex';
@@ -1120,7 +1087,6 @@
       input.value = '';
     }
 
-    // مزامنة حالة اللعبة والرقعة والحركات تماماً بين الأجهزة
     function listenToGameState(tableId) {
       db.ref('game_state/table_' + tableId).on('value', function(snapshot) {
         var state = snapshot.val();
@@ -1132,15 +1098,8 @@
           
           if (state.status === 'playing') {
             gameStarted = true;
-            isCountingDown = false;
-            countdownOverlay.style.display = 'none';
             gameStatusBadge.textContent = dict[currentLang].statusLive;
             drawBoard();
-          } else if (state.status === 'counting') {
-            isCountingDown = true;
-            gameStatusBadge.textContent = dict[currentLang].statusCounting;
-            countdownOverlay.style.display = 'flex';
-            countdownNumber.textContent = state.countdown || 5;
           }
         }
       });
@@ -1151,7 +1110,7 @@
         var payload = {
           board: board,
           currentTurn: currentTurn,
-          status: gameStarted ? 'playing' : (isCountingDown ? 'counting' : 'waiting')
+          status: gameStarted ? 'playing' : 'waiting'
         };
         if (extraData) Object.assign(payload, extraData);
         db.ref('game_state/table_' + currentTableId).update(payload);
@@ -1168,45 +1127,22 @@
         document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
         document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
         
-        // التحقق من اكتمال اللاعبين لبدء العد التنازلي (اللاعب الأبيض يتحكم بالبدء الموحد)
+        // بمجرد اكتمال اللاعبين، اللاعب الأبيض يبدأ اللعبة فوراً ويرسلها لـ Firebase
         if (table.white !== null && table.black !== null) {
-          if (!gameStarted && !isCountingDown && currentUserRole === 'player' && playerGameColor === 'white') {
-            startMasterCountdown();
+          if (!gameStarted && currentUserRole === 'player' && playerGameColor === 'white') {
+            gameStarted = true;
+            board = startingBoard.map(function(row) { return row.slice(); });
+            currentTurn = 'white';
+            updateGameStateOnFirebase({ status: 'playing', board: board, currentTurn: currentTurn });
+            logEvent(t.logStarted);
+            startTimer();
+            drawBoard();
           }
         } else {
           gameStarted = false;
-          isCountingDown = false;
-          if (countdownInterval) clearInterval(countdownInterval);
-          countdownOverlay.style.display = 'none';
           gameStatusBadge.textContent = t.statusWaiting;
         }
       }
-    }
-
-    // العد التنازلي الموحد الذي يرسل الحالة للسيرفر لكي يراها الطرفان
-    function startMasterCountdown() {
-      isCountingDown = true;
-      var counter = 5;
-      
-      if (countdownInterval) clearInterval(countdownInterval);
-      countdownInterval = setInterval(function() {
-        counter--;
-        if (counter > 0) {
-          updateGameStateOnFirebase({ countdown: counter, status: 'counting' });
-        } else {
-          clearInterval(countdownInterval);
-          gameStarted = true;
-          isCountingDown = false;
-          
-          board = startingBoard.map(function(row) { return row.slice(); });
-          currentTurn = 'white';
-          
-          updateGameStateOnFirebase({ status: 'playing', board: board, currentTurn: currentTurn });
-          logEvent(dict[currentLang].logStarted);
-          startTimer();
-          drawBoard();
-        }
-      }, 1000);
     }
 
     var unicodePieces = {
@@ -1239,12 +1175,10 @@
     var currentTurn = 'white';
     var selectedSquare = null;
     var gameStarted = false;
-    var isCountingDown = false;
 
     var whiteTime = 600;
     var blackTime = 600;
     var timerInterval = null;
-    var countdownInterval = null;
 
     var boardEl = document.getElementById('chessboard');
     var timerWhiteEl = document.getElementById('timer-white');
@@ -1253,8 +1187,6 @@
     var cardBlack = document.getElementById('card-black');
     var matchLog = document.getElementById('match-log');
     var gameStatusBadge = document.getElementById('game-status-badge');
-    var countdownOverlay = document.getElementById('countdown-overlay');
-    var countdownNumber = document.getElementById('countdown-number');
 
     function isWhite(p) { return p !== '' && p === p.toUpperCase(); }
     function isBlack(p) { return p !== '' && p === p.toLowerCase(); }
@@ -1487,8 +1419,6 @@
       whiteTime = 600;
       blackTime = 600;
       gameStarted = false;
-      isCountingDown = false;
-      countdownOverlay.style.display = 'none';
       updateTimerDisplay();
       drawBoard();
     }
