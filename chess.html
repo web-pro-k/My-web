@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Championship Arena (Online Realtime)</title>
+  <style>
+    :root {
+      --bg-dark: #12131a;
+      --card-bg: #1c1e29;
+      --card-border: #2c2f40;
+      --accent-blue: #5865f2;
+      --accent-green: #2ecc71;
+      --accent-red: #e74c3c;
+      --accent-gold: #f1c40f;
+      --text-main: #f0f2f5;
+      --text-muted: #8b92a5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .lang-switcher-bar {
+      width: 100%;
+      max-width: 1050px;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .btn-lang {
+      background: #2b2e3e;
+      color: #fff;
+      border: 1px solid #4f545c;
+      padding: 7px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-lang:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    /* الصفحة الأولى: شاشة الاختيار الرئيسية */
+    #page-login {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 15px;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 30px;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .login-card h1 {
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+    }
+
+    .login-card p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 25px;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .role-option {
+      background: #11131a;
+      border: 2px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .role-option:hover {
+      border-color: #444963;
+    }
+
+    .role-option.selected {
+      border-color: var(--accent-blue);
+      background: rgba(88, 101, 242, 0.12);
+    }
+
+    .role-option .role-icon {
+      font-size: 32px;
+    }
+
+    .role-option .role-title {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    .btn-enter {
+      width: 100%;
+      padding: 13px;
+      margin-top: 25px;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-enter:hover {
+      background: #4752c4;
+    }
+
+    /* الصفحة الثانية: صالة الطاولات */
+    #page-tables {
+      display: none;
+      width: 100%;
+      max-width: 1050px;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .tables-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .tables-header h2 {
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+    }
+
+    .tables-header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+    }
+
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .table-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .table-seats {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      gap: 10px;
+    }
+
+    .seat-box {
+      flex: 1;
+      background: #11131a;
+      border: 1px dashed var(--card-border);
+      border-radius: 8px;
+      padding: 12px 6px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .seat-box.occupied {
+      border-style: solid;
+      border-color: var(--accent-green);
+      background: rgba(46, 204, 113, 0.05);
+    }
+
+    .seat-box.available {
+      border-color: var(--accent-blue);
+      cursor: pointer;
+    }
+
+    .seat-box.available:hover {
+      background: rgba(88, 101, 242, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .seat-box.disabled-seat {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .seat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .seat-status {
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .seat-status.connected {
+      color: var(--accent-green);
+    }
+
+    .seat-status.empty {
+      color: var(--accent-blue);
+    }
+
+    .btn-watch-table {
+      width: 100%;
+      padding: 9px;
+      background: #2b2e3e;
+      border: 1px solid #4f545c;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn-watch-table:hover {
+      background: var(--accent-blue);
+    }
+
+    .btn-watch-table.disabled-btn {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+      background: #1c1e29;
+      border-color: #2c2f40;
+    }
+
+    /* النافذة المنبثقة لإدخال اسم اللاعب */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 25px;
+      width: 90%;
+      max-width: 380px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+
+    .modal-card h3 {
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+    }
+
+    .modal-card input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: #11131a;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 15px;
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-btns button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-confirm { background: var(--accent-green); color: #fff; }
+    .btn-cancel { background: var(--accent-red); color: #fff; }
+
+    /* شاشة العد التنازلي على الرقعة */
+    .countdown-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(18, 19, 26, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      font-size: 3rem;
+      font-weight: bold;
+      color: var(--accent-gold);
+      display: none;
+    }
+
+    .countdown-overlay span {
+      font-size: 1rem;
+      color: var(--text-main);
+      margin-top: 10px;
+    }
+
+    /* الصفحة الثالثة: شاشة الشطرنج */
+    #page-game {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .top-user-bar {
+      width: 100%;
+      max-width: 1050px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 18px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-tag {
+      font-size: 0.9rem;
+    }
+
+    .user-tag strong {
+      color: var(--accent-green);
+    }
+
+    .btn-logout {
+      background: #2b2e3e;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-logout:hover {
+      background: #393d52;
+    }
+
+    .arena-container {
+      display: grid;
+      grid-template-columns: auto 340px;
+      gap: 25px;
+      max-width: 1050px;
+      width: 100%;
+    }
+
+    .game-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    .player-card {
+      width: 440px;
+      max-width: 90vw;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .player-card.active-turn {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 15px rgba(46, 204, 113, 0.25);
+    }
+
+    .player-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .player-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: #2b2e3e;
+      border: 1px solid #444;
+    }
+
+    .player-meta h3 {
+      font-size: 0.95rem;
+    }
+
+    .player-meta span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .player-timer {
+      font-size: 1.3rem;
+      font-weight: bold;
+      background: #0e1017;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    /* رقعة الشطرنج */
+    #chessboard {
+      width: 440px;
+      height: 440px;
+      max-width: 90vw;
+      max-height: 90vw;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border: 4px solid #000;
+      border-radius: 4px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .square {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 38px;
+      cursor: pointer;
+    }
+
+    .square.light { background-color: #ebecd0; }
+    .square.dark  { background-color: #779556; }
+    .square.selected { background-color: #f6f669 !important; }
+
+    .white-piece {
+      color: #ffffff;
+      fill: #ffffff;
+      stroke: #1a1a1a;
+      stroke-width: 1.2;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    }
+
+    .black-piece {
+      color: #1a1a1a;
+      fill: #1a1a1a;
+      stroke: #ffffff;
+      stroke-width: 1.0;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    }
+
+    svg.custom-piece {
+      width: 38px;
+      height: 38px;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* الشريط الجانبي */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      background: #34495e;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .match-log {
+      height: 120px;
+      overflow-y: auto;
+      background: #11131a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .spectator-live {
+      color: var(--accent-green);
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .chat-box {
+      height: 140px;
+      overflow-y: auto;
+      background: #11131a;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .chat-msg { word-break: break-word; }
+    .chat-msg strong { color: var(--accent-blue); }
+
+    .chat-input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chat-input-row input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: #11131a;
+      color: #fff;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .chat-input-row button {
+      padding: 8px 14px;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 840px) {
+      .arena-container { grid-template-columns: 1fr; }
+      .sidebar {
+        width: 440px;
+        max-width: 90vw;
+        margin: 0 auto;
+      }
+    }
+  </style>
+
+  <!-- استدعاء حزمة SDK لـ Firebase Realtime Database -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <!-- شريط تبديل اللغة (English / العربية) -->
+  <div class="lang-switcher-bar">
+    <button class="btn-lang" onclick="toggleLanguage()">🌐 English / العربية</button>
+  </div>
+
+  <!-- الصفحة الأولى: شاشة الاختيار الرئيسية -->
+  <div id="page-login">
+    <div class="login-card">
+      <h1 id="txt-login-title">🏆 بطولة الشطرنج</h1>
+      <p id="txt-login-desc">اختر صفة الدخول للانتقال إلى صالة الطاولات</p>
+
+      <div class="role-grid">
+        <div class="role-option selected" onclick="selectRole('player', this)">
+          <span class="role-icon">🎮</span>
+          <span class="role-title" id="txt-role-player">لاعب</span>
+        </div>
+
+        <div class="role-option" onclick="selectRole('spectator', this)">
+          <span class="role-icon">👥</span>
+          <span class="role-title" id="txt-role-spectator">مشاهد</span>
+        </div>
+      </div>
+
+      <button class="btn-enter" id="btn-enter" onclick="goToTablesPage()">الانتقال إلى الصالة ➔</button>
+    </div>
+  </div>
+
+  <!-- الصفحة الثانية: صالة الطاولات -->
+  <div id="page-tables">
+    <div class="tables-header">
+      <h2 id="txt-tables-title">♟️ صالة الطاولات المتاحة</h2>
+      <p id="txt-tables-desc">اختر الطاولة والمقعد المناسب لبدء اللعب أو المشاهدة</p>
+    </div>
+
+    <div class="tables-grid" id="tables-grid"></div>
+  </div>
+
+  <!-- نافذة إدخال اسم اللاعب -->
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal-card">
+      <h3 id="txt-modal-title">أدخل اسمك للانضمام</h3>
+      <input type="text" id="playerInputName" placeholder="اكتب اسمك هنا..." autofocus />
+      <div class="modal-btns">
+        <button class="btn-confirm" onclick="confirmPlayerName()">تأكيد والدخول</button>
+        <button class="btn-cancel" onclick="closeNameModal()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- الصفحة الثالثة: شاشة الشطرنج -->
+  <div id="page-game">
+    
+    <div class="top-user-bar">
+      <div class="user-tag">
+        <span id="txt-welcome">مرحباً بك:</span> <strong id="displayUserName">--</strong> | 
+        <span id="txt-your-role">صفتك:</span> <strong id="displayUserRole">--</strong> |
+        <span>الطاولة:</span> <strong id="displayTableNum" style="color: var(--accent-gold);">--</strong>
+      </div>
+      <button class="btn-logout" id="btn-logout" onclick="tryLeaveTable()">مغادرة الطاولة ↩️</button>
+    </div>
+
+    <div class="arena-container">
+      
+      <div class="game-area">
+        <!-- بطاقة اللاعب الأسود -->
+        <div class="player-card" id="card-black">
+          <div class="player-profile">
+            <div class="player-badge">
+              <span class="black-piece">♛</span>
+            </div>
+            <div class="player-meta">
+              <h3 id="name-black">اللاعب الثاني (الأسود)</h3>
+              <span id="sub-black">بانتظار الخصم...</span>
+            </div>
+          </div>
+          <div class="player-timer" id="timer-black">10:00</div>
+        </div>
+
+        <!-- رقعة الشطرنج ومعها شاشة العد التنازلي -->
+        <div style="position: relative;">
+          <div id="chessboard"></div>
+          <div id="countdown-overlay" class="countdown-overlay">
+            <div id="countdown-number">5</div>
+            <span id="txt-countdown-sub">ستبدأ المباراة بعد قليل...</span>
+          </div>
+        </div>
+
+        <!-- بطاقة اللاعب الأبيض -->
+        <div class="player-card active-turn" id="card-white">
+          <div class="player-profile">
+            <div class="player-badge">
+              <span class="white-piece">♕</span>
+            </div>
+            <div class="player-meta">
+              <h3 id="name-white">اللاعب الأول (الأبيض)</h3>
+              <span id="sub-white">بانتظار الخصم...</span>
+            </div>
+          </div>
+          <div class="player-timer" id="timer-white">10:00</div>
+        </div>
+      </div>
+
+      <!-- الجانب الأيسر: الحالة والمشاهدين -->
+      <div class="sidebar">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title" id="txt-status-title">📊 حالة المباراة</div>
+            <span class="badge" id="game-status-badge">بانتظار الخصم</span>
+          </div>
+          <div class="match-log" id="match-log">
+            <div id="initial-log">[النظام] انضممت إلى الطاولة. يرجى انتظار اكتمال اللاعبين.</div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title" id="txt-spectator-title">👥 المشاهدون والدردشة</div>
+            <span class="spectator-live" id="spectator-counter">248 مشاهد</span>
+          </div>
+
+          <div class="chat-box" id="chat-box"></div>
+
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="اكتب تعليقك..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button id="btn-send-chat" onclick="sendChatMessage()">إرسال</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // تهيئة مشروع Firebase ببياناتك السحابية الخاصة
+    // ============================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmHujXvdnXJKIjKWO5UO2cyd0sHgyQJvA",
+      authDomain: "chess-arena-cfdeb.firebaseapp.com",
+      projectId: "chess-arena-cfdeb",
+      storageBucket: "chess-arena-cfdeb.firebasestorage.app",
+      messagingSenderId: "748645276452",
+      appId: "1:748645276452:web:fe1a348c7b88a1916571b1",
+      measurementId: "G-DF03YVVNCQ",
+      databaseURL: "https://chess-arena-cfdeb-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    var tablesData = [
+      { id: 1, white: null, black: null },
+      { id: 2, white: null, black: null },
+      { id: 3, white: null, black: null },
+      { id: 4, white: null, black: null },
+      { id: 5, white: null, black: null }
+    ];
+
+    var currentTableId = null;
+    var currentUserRole = 'player'; 
+    var playerGameColor = 'white'; 
+    var currentUserName = '';
+    var pendingTableId = null;
+    var pendingColor = null;
+
+    var currentLang = 'ar';
+    var dict = {
+      ar: {
+        loginTitle: '🏆 بطولة الشطرنج أونلاين',
+        loginDesc: 'اختر صفة الدخول للانتقال إلى صالة الطاولات السحابية',
+        rolePlayer: 'لاعب 🎮',
+        roleSpectator: 'مشاهد 👥',
+        btnEnter: 'الانتقال إلى الصالة ➔',
+        tablesTitle: '♟️ صالة الطاولات المتاحة',
+        tablesDesc: 'اختر الطاولة والمقعد المناسب لبدء اللعب أو المشاهدة',
+        tableHeader: 'طاولة رقم',
+        seat1: 'دخول لاعب أول (أبيض)',
+        seat2: 'دخول لاعب ثاني (أسود)',
+        connected: 'متصل: ',
+        btnWatch: 'مشاهدة هذه الطاولة 👁️',
+        welcome: 'مرحباً بك:',
+        yourRole: 'صفتك:',
+        btnLogout: 'مغادرة الطاولة ↩️',
+        pWhiteTitle: 'اللاعب الأول (الأبيض)',
+        pBlackTitle: 'اللاعب الثاني (الأسود)',
+        statusWaiting: 'بانتظار الخصم',
+        statusCounting: 'جاري العد التنازلي...',
+        statusLive: 'مباراة جارية',
+        statusWaitingSub: 'بانتظار الخصم...',
+        statusReadySub: 'لاعب متصل',
+        spectatorsTitle: '👥 المشاهدون والدردشة',
+        spectatorUnit: 'مشاهد',
+        chatPlaceholder: 'اكتب تعليقك...',
+        btnSend: 'إرسال',
+        alertSpectatorOnly: 'أنت داخل بصفة "مشاهد" فقط، لا يمكنك الدخول كلاعب!',
+        alertPlayerWatchDisabled: 'أنت داخل بصفة "لاعب"، لا يمكنك النقر على زر المشاهدة!',
+        alertSpectatorMove: 'أنت داخل بصفة "مشاهد"، لا يمكنك تحريك القطع!',
+        alertWaitingOpponent: 'لم يتم اكتمال اللاعبين بعد أو جاري العد التنازلي!',
+        alertCantLeave: '⚠️ لا يمكنك مغادرة اللعبة الآن لأن المباراة بدأت أو جارية! يمكنك المغادرة فقط عند انتهاء المباراة.',
+        alertNotYourTurnWhite: 'ليس دورك! انتظر حتى يلعب اللاعب الأسود.',
+        alertNotYourTurnBlack: 'ليس دورك! انتظر حتى يلعب اللاعب الأبيض.',
+        logWaiting: '[النظام] بانتظار اكتمال دخول الخصم لبدء العد التنازلي...',
+        logCountdown: '[النظام] اكتمل الطرفان! تبدأ المباراة خلال 5 ثوانٍ...',
+        logStarted: '[النظام] انطلاق المباراة أونلاين! الدور للاعب الأبيض.',
+        logCapture: ' أخذ قطعة الخصم',
+        timeoutMsg: 'انتهى الوقت! فاز اللاعب: '
+      },
+      en: {
+        loginTitle: '🏆 Chess Championship Online',
+        loginDesc: 'Select your role to view live cloud tables',
+        rolePlayer: 'Player 🎮',
+        roleSpectator: 'Spectator 👥',
+        btnEnter: 'Go to Lobby ➔',
+        tablesTitle: '♟️ Available Tables Lobby',
+        tablesDesc: 'Select a table and seat to play or watch',
+        tableHeader: 'Table #',
+        seat1: 'Join as Player 1 (White)',
+        seat2: 'Join as Player 2 (Black)',
+        connected: 'Connected: ',
+        btnWatch: 'Watch Table 👁️',
+        welcome: 'Welcome:',
+        yourRole: 'Role:',
+        btnLogout: 'Leave Table ↩️',
+        pWhiteTitle: 'Player 1 (White)',
+        pBlackTitle: 'Player 2 (Black)',
+        statusWaiting: 'Waiting for Opponent',
+        statusCounting: 'Countdown...',
+        statusLive: 'Match Live',
+        statusWaitingSub: 'Waiting for opponent...',
+        statusReadySub: 'Connected Player',
+        spectatorsTitle: '👥 Spectators & Chat',
+        spectatorUnit: 'Live',
+        chatPlaceholder: 'Type your message...',
+        btnSend: 'Send',
+        alertSpectatorOnly: 'You entered as a "Spectator" only and cannot join as a player!',
+        alertPlayerWatchDisabled: 'You entered as a "Player", you cannot click watch button!',
+        alertSpectatorMove: 'You are logged in as a "Spectator"; you cannot move pieces!',
+        alertWaitingOpponent: 'Players not complete yet or countdown in progress!',
+        alertCantLeave: '⚠️ You cannot leave now because the match has started! You can only leave after the match ends.',
+        alertNotYourTurnWhite: 'Not your turn! Wait for Black to make a move.',
+        alertNotYourTurnBlack: 'Not your turn! Wait for White to make a move.',
+        logWaiting: '[System] Waiting for opponent to start countdown...',
+        logCountdown: '[System] Both players ready! Match starting in 5 seconds...',
+        logStarted: '[System] Online match started! White moves first.',
+        logCapture: ' captured opponent piece',
+        timeoutMsg: 'Time Out! Winner: '
+      }
+    };
+
+    // مزامنة الطاولات والدردشة لحظياً من قاعدة البيانات (Realtime Listener)
+    db.ref('tables').on('value', function(snapshot) {
+      var val = snapshot.val();
+      if (val) {
+        tablesData = val;
+        renderTables();
+        if (currentTableId) {
+          updateCurrentGameFromFirebase();
+        }
+      } else {
+        db.ref('tables').set(tablesData);
+      }
+    });
+
+    function toggleLanguage() {
+      currentLang = (currentLang === 'ar') ? 'en' : 'ar';
+      document.documentElement.lang = currentLang;
+      document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+      applyTranslations();
+    }
+
+    function applyTranslations() {
+      var t = dict[currentLang];
+      document.getElementById('txt-login-title').textContent = t.loginTitle;
+      document.getElementById('txt-login-desc').textContent = t.loginDesc;
+      document.getElementById('txt-role-player').textContent = t.rolePlayer;
+      document.getElementById('txt-role-spectator').textContent = t.roleSpectator;
+      document.getElementById('btn-enter').textContent = t.btnEnter;
+
+      document.getElementById('txt-tables-title').textContent = t.tablesTitle;
+      document.getElementById('txt-tables-desc').textContent = t.tablesDesc;
+      renderTables();
+
+      document.getElementById('txt-welcome').textContent = t.welcome;
+      document.getElementById('txt-your-role').textContent = t.yourRole;
+      document.getElementById('btn-logout').textContent = t.btnLogout;
+      document.getElementById('txt-spectator-title').textContent = t.spectatorsTitle;
+      document.getElementById('chat-input').placeholder = t.chatPlaceholder;
+      document.getElementById('btn-send-chat').textContent = t.btnSend;
+
+      updateUserRoleText();
+    }
+
+    function updateUserRoleText() {
+      var t = dict[currentLang];
+      var roleText = '';
+      if (currentUserRole === 'spectator') {
+        roleText = t.roleSpectator;
+      } else {
+        roleText = (playerGameColor === 'white') ? t.pWhiteTitle : t.pBlackTitle;
+      }
+      document.getElementById('displayUserRole').textContent = roleText;
+    }
+
+    function selectRole(role, element) {
+      currentUserRole = role;
+      var options = document.querySelectorAll('.role-option');
+      for (var i = 0; i < options.length; i++) {
+        options[i].classList.remove('selected');
+      }
+      element.classList.add('selected');
+    }
+
+    function tryLeaveTable() {
+      var t = dict[currentLang];
+      if (gameStarted || isCountingDown) {
+        alert(t.alertCantLeave);
+        return;
+      }
+      if (currentTableId !== null && currentUserRole === 'player') {
+        var tableIndex = tablesData.findIndex(function(item) { return item.id === currentTableId; });
+        if (tableIndex !== -1) {
+          if (tablesData[tableIndex].white === currentUserName) tablesData[tableIndex].white = null;
+          if (tablesData[tableIndex].black === currentUserName) tablesData[tableIndex].black = null;
+          db.ref('tables').set(tablesData);
+        }
+      }
+      goToTablesPage();
+    }
+
+    function goToTablesPage() {
+      if (timerInterval) clearInterval(timerInterval);
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (currentTableId) {
+        db.ref('chats/table_' + currentTableId).off();
+        db.ref('game_state/table_' + currentTableId).off();
+      }
+      currentTableId = null;
+      gameStarted = false;
+      isCountingDown = false;
+      document.getElementById('page-login').style.display = 'none';
+      document.getElementById('page-game').style.display = 'none';
+      document.getElementById('page-tables').style.display = 'flex';
+      renderTables();
+    }
+
+    function renderTables() {
+      var container = document.getElementById('tables-grid');
+      container.innerHTML = '';
+      var t = dict[currentLang];
+
+      tablesData.forEach(function(tb) {
+        var card = document.createElement('div');
+        card.className = 'table-card';
+
+        var whiteStatusHtml = tb.white 
+          ? '<span class="seat-status connected">🟢 ' + t.connected + escapeHtml(tb.white) + '</span>'
+          : '<span class="seat-status empty">⚪️ ' + t.seat1 + '</span>';
+
+        var blackStatusHtml = tb.black 
+          ? '<span class="seat-status connected">🟢 ' + t.connected + escapeHtml(tb.black) + '</span>'
+          : '<span class="seat-status empty">⚫️ ' + t.seat2 + '</span>';
+
+        var seatClass = currentUserRole === 'spectator' ? 'disabled-seat' : '';
+        var watchBtnClass = currentUserRole === 'player' ? 'disabled-btn' : '';
+
+        card.innerHTML = 
+          '<div class="table-title"><span>♟️</span> ' + t.tableHeader + ' ' + tb.id + '</div>' +
+          '<div class="table-seats">' +
+            '<div class="seat-box ' + (tb.white ? 'occupied' : 'available') + ' ' + seatClass + '" onclick="onSeatClick(' + tb.id + ', \'white\')">' +
+              '<span class="seat-label">المقعد الأبيض</span>' +
+              whiteStatusHtml +
+            '</div>' +
+            '<div class="seat-box ' + (tb.black ? 'occupied' : 'available') + ' ' + seatClass + '" onclick="onSeatClick(' + tb.id + ', \'black\')">' +
+              '<span class="seat-label">المقعد الأسود</span>' +
+              blackStatusHtml +
+            '</div>' +
+          '</div>' +
+          '<button class="btn-watch-table ' + watchBtnClass + '" onclick="watchTable(' + tb.id + ')">' + t.btnWatch + '</button>';
+
+        container.appendChild(card);
+      });
+    }
+
+    function onSeatClick(tableId, color) {
+      var t = dict[currentLang];
+
+      if (currentUserRole === 'spectator') {
+        alert(t.alertSpectatorOnly);
+        return;
+      }
+
+      var table = tablesData.find(function(item) { return item.id === tableId; });
+      if (!table) return;
+
+      if (table[color] !== null) {
+        alert('هذا المقعد مشغول حالياً بـ: ' + table[color]);
+        return;
+      }
+
+      pendingTableId = tableId;
+      pendingColor = color;
+      document.getElementById('playerInputName').value = '';
+      document.getElementById('nameModal').style.display = 'flex';
+    }
+
+    function confirmPlayerName() {
+      var nameVal = document.getElementById('playerInputName').value.trim();
+      if (!nameVal) {
+        alert('يرجى إدخال اسمك أولاً!');
+        return;
+      }
+
+      currentUserName = nameVal;
+      var tableIndex = tablesData.findIndex(function(item) { return item.id === pendingTableId; });
+      tablesData[tableIndex][pendingColor] = currentUserName;
+      
+      db.ref('tables').set(tablesData);
+      
+      playerGameColor = pendingColor;
+      currentTableId = pendingTableId;
+
+      closeNameModal();
+      startMatchPage(pendingTableId);
+    }
+
+    function closeNameModal() {
+      document.getElementById('nameModal').style.display = 'none';
+      pendingTableId = null;
+      pendingColor = null;
+    }
+
+    function watchTable(tableId) {
+      var t = dict[currentLang];
+      if (currentUserRole === 'player') {
+        alert(t.alertPlayerWatchDisabled);
+        return;
+      }
+      currentUserName = 'مشاهد';
+      currentTableId = tableId;
+      startMatchPage(tableId);
+    }
+
+    function startMatchPage(tableId) {
+      document.getElementById('page-tables').style.display = 'none';
+      document.getElementById('page-game').style.display = 'flex';
+
+      var table = tablesData.find(function(t) { return t.id === tableId; });
+      var t = dict[currentLang];
+
+      document.getElementById('displayUserName').textContent = currentUserName || 'مشاهد';
+      document.getElementById('displayTableNum').textContent = '#' + tableId;
+      
+      document.getElementById('name-white').textContent = table.white ? table.white : t.pWhiteTitle;
+      document.getElementById('name-black').textContent = table.black ? table.black : t.pBlackTitle;
+
+      document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
+      document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
+
+      updateUserRoleText();
+      listenToChat(tableId);
+      listenToGameState(tableId);
+      initGame();
+    }
+
+    // مزامنة الدردشة أونلاين
+    function listenToChat(tableId) {
+      const chatRef = db.ref('chats/table_' + tableId);
+      chatRef.on('value', function(snapshot) {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = '';
+        const data = snapshot.val();
+        if (data) {
+          Object.values(data).forEach(msg => {
+            var div = document.createElement('div');
+            div.classList.add('chat-msg');
+            div.innerHTML = '<strong>' + escapeHtml(msg.sender) + ':</strong> ' + escapeHtml(msg.text);
+            chatBox.appendChild(div);
+          });
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
+      });
+    }
+
+    function sendChatMessage() {
+      var input = document.getElementById('chat-input');
+      var text = input.value.trim();
+      if (!text || !currentTableId) return;
+
+      db.ref('chats/table_' + currentTableId).push({
+        sender: currentUserName || 'مشاهد',
+        text: text
+      });
+      input.value = '';
+    }
+
+    // مزامنة أونلاين لحركات القطع والدور
+    function listenToGameState(tableId) {
+      db.ref('game_state/table_' + tableId).on('value', function(snapshot) {
+        var state = snapshot.val();
+        if (state) {
+          board = state.board;
+          currentTurn = state.currentTurn;
+          drawBoard();
+        }
+      });
+    }
+
+    function updateGameStateOnFirebase() {
+      if (currentTableId) {
+        db.ref('game_state/table_' + currentTableId).set({
+          board: board,
+          currentTurn: currentTurn
+        });
+      }
+    }
+
+    function updateCurrentGameFromFirebase() {
+      var table = tablesData.find(function(t) { return t.id === currentTableId; });
+      var t = dict[currentLang];
+      if (table) {
+        document.getElementById('name-white').textContent = table.white ? table.white : t.pWhiteTitle;
+        document.getElementById('name-black').textContent = table.black ? table.black : t.pBlackTitle;
+
+        document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
+        document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
+        checkGameStartCondition();
+      }
+    }
+
+    // محرك الشطرنج والتنفيذ
+    var unicodePieces = {
+      'r': '♜', 'n': '♞', 'q': '♛', 'p': '♟',
+      'R': '♖', 'N': '♘', 'Q': '♕', 'P': '♙'
+    };
+
+    var bishopSVG = '<circle cx="22.5" cy="8.5" r="2.2" />' +
+      '<path d="M22.5 11 C17 14, 16 23, 17 26 L28 26 C29 23, 28 14, 22.5 11 Z" />' +
+      '<path d="M17 26 L15 34 L30 34 L28 26 Z" />' +
+      '<rect x="12" y="34" width="21" height="5" rx="2" />';
+
+    var kingSVG = '<circle cx="22.5" cy="8" r="2.5"/>' +
+      '<path d="M14 17 C14 11, 20 10, 22.5 10 C25 10, 31 11, 31 17 L30 25 L15 25 Z"/>' +
+      '<circle cx="18" cy="21" r="1.5"/><circle cx="22.5" cy="21" r="1.5"/><circle cx="27" cy="21" r="1.5"/>' +
+      '<path d="M16 25 L14 34 L31 34 L29 25 Z"/><rect x="11" y="34" width="23" height="5" rx="2"/>';
+
+    var startingBoard = [
+      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+      ['',  '',  '',  '',  '',  '',  '',  ''],
+      ['',  '',  '',  '',  '',  '',  '',  ''],
+      ['',  '',  '',  '',  '',  '',  '',  ''],
+      ['',  '',  '',  '',  '',  '',  '',  ''],
+      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+
+    var board = [];
+    var currentTurn = 'white';
+    var selectedSquare = null;
+    var gameStarted = false;
+    var isCountingDown = false;
+
+    var whiteTime = 600;
+    var blackTime = 600;
+    var timerInterval = null;
+    var countdownInterval = null;
+
+    var boardEl = document.getElementById('chessboard');
+    var timerWhiteEl = document.getElementById('timer-white');
+    var timerBlackEl = document.getElementById('timer-black');
+    var cardWhite = document.getElementById('card-white');
+    var cardBlack = document.getElementById('card-black');
+    var matchLog = document.getElementById('match-log');
+    var gameStatusBadge = document.getElementById('game-status-badge');
+    var countdownOverlay = document.getElementById('countdown-overlay');
+    var countdownNumber = document.getElementById('countdown-number');
+
+    function isWhite(p) { return p !== '' && p === p.toUpperCase(); }
+    function isBlack(p) { return p !== '' && p === p.toLowerCase(); }
+
+    function logEvent(text) {
+      var entry = document.createElement('div');
+      var now = new Date();
+      var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      entry.textContent = '[' + timeStr + '] ' + text;
+      matchLog.prepend(entry);
+    }
+
+    function renderPiece(piece) {
+      if (!piece) return '';
+      var type = piece.toLowerCase();
+      var colorClass = isWhite(piece) ? 'white-piece' : 'black-piece';
+
+      if (type === 'b') {
+        return '<svg class="custom-piece ' + colorClass + '" viewBox="0 0 45 45">' + bishopSVG + '</svg>';
+      }
+      if (type === 'k') {
+        return '<svg class="custom-piece ' + colorClass + '" viewBox="0 0 45 45">' + kingSVG + '</svg>';
+      }
+      return '<span class="' + colorClass + '">' + unicodePieces[piece] + '</span>';
+    }
+
+    function drawBoard() {
+      boardEl.innerHTML = '';
+      for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+          var square = document.createElement('div');
+          square.classList.add('square');
+          square.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+
+          if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
+            square.classList.add('selected');
+          }
+
+          square.innerHTML = renderPiece(board[r][c]);
+          (function(row, col) {
+            square.addEventListener('click', function() {
+              onSquareClick(row, col);
+            });
+          })(r, c);
+
+          boardEl.appendChild(square);
+        }
+      }
+
+      if (gameStarted) {
+        if (currentTurn === 'white') {
+          cardWhite.classList.add('active-turn');
+          cardBlack.classList.remove('active-turn');
+        } else {
+          cardBlack.classList.add('active-turn');
+          cardWhite.classList.remove('active-turn');
+        }
+      }
+    }
+
+    function checkGameStartCondition() {
+      var table = tablesData.find(function(item) { return item.id === currentTableId; });
+      var t = dict[currentLang];
+
+      if (table && table.white !== null && table.black !== null) {
+        if (!gameStarted && !isCountingDown) {
+          startCountdown5Seconds();
+        }
+      } else {
+        gameStarted = false;
+        isCountingDown = false;
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownOverlay.style.display = 'none';
+        gameStatusBadge.textContent = t.statusWaiting;
+      }
+    }
+
+    function startCountdown5Seconds() {
+      isCountingDown = true;
+      var t = dict[currentLang];
+      gameStatusBadge.textContent = t.statusCounting;
+
+      var counter = 5;
+      countdownNumber.textContent = counter;
+      countdownOverlay.style.display = 'flex';
+
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(function() {
+        counter--;
+        if (counter > 0) {
+          countdownNumber.textContent = counter;
+        } else {
+          clearInterval(countdownInterval);
+          countdownOverlay.style.display = 'none';
+          isCountingDown = false;
+          gameStarted = true;
+          gameStatusBadge.textContent = t.statusLive;
+          logEvent(t.logStarted);
+          startTimer();
+          drawBoard();
+        }
+      }, 1000);
+    }
+
+    function onSquareClick(r, c) {
+      var t = dict[currentLang];
+
+      if (currentUserRole === 'spectator') {
+        alert(t.alertSpectatorMove);
+        return;
+      }
+
+      if (!gameStarted) {
+        alert(t.alertWaitingOpponent);
+        return;
+      }
+
+      if (playerGameColor === 'white' && currentTurn !== 'white') {
+        alert(t.alertNotYourTurnWhite);
+        return;
+      }
+      if (playerGameColor === 'black' && currentTurn !== 'black') {
+        alert(t.alertNotYourTurnBlack);
+        return;
+      }
+
+      var piece = board[r][c];
+
+      if (!selectedSquare) {
+        if (piece && ((currentTurn === 'white' && isWhite(piece)) || (currentTurn === 'black' && isBlack(piece)))) {
+          selectedSquare = { r: r, c: c };
+          drawBoard();
+        }
+        return;
+      }
+
+      if (selectedSquare.r === r && selectedSquare.c === c) {
+        selectedSquare = null;
+        drawBoard();
+        return;
+      }
+
+      if (piece && ((currentTurn === 'white' && isWhite(piece)) || (currentTurn === 'black' && isBlack(piece)))) {
+        selectedSquare = { r: r, c: c };
+        drawBoard();
+        return;
+      }
+
+      if (isValidMove(selectedSquare.r, selectedSquare.c, r, c)) {
+        var mover = board[selectedSquare.r][selectedSquare.c];
+        var target = board[r][c];
+
+        board[r][c] = mover;
+        board[selectedSquare.r][selectedSquare.c] = '';
+
+        if (target) {
+          logEvent((currentTurn === 'white' ? 'White' : 'Black') + t.logCapture);
+        }
+
+        selectedSquare = null;
+        currentTurn = currentTurn === 'white' ? 'black' : 'white';
+        drawBoard();
+        updateGameStateOnFirebase();
+      }
+    }
+
+    function isPathClear(r1, c1, r2, c2) {
+      var dr = Math.sign(r2 - r1);
+      var dc = Math.sign(c2 - c1);
+      var currR = r1 + dr;
+      var currC = c1 + dc;
+      while (currR !== r2 || currC !== c2) {
+        if (board[currR][currC] !== '') return false;
+        currR += dr;
+        currC += dc;
+      }
+      return true;
+    }
+
+    function isValidMove(r1, c1, r2, c2) {
+      var piece = board[r1][c1];
+      var target = board[r2][c2];
+      var type = piece.toLowerCase();
+      var dr = r2 - r1;
+      var dc = c2 - c1;
+
+      if (target && isWhite(piece) === isWhite(target)) return false;
+
+      switch (type) {
+        case 'p': {
+          var dir = isWhite(piece) ? -1 : 1;
+          var startRow = isWhite(piece) ? 6 : 1;
+          if (dc === 0 && dr === dir && target === '') return true;
+          if (dc === 0 && dr === 2 * dir && r1 === startRow && target === '' && board[r1 + dir][c1] === '') return true;
+          if (Math.abs(dc) === 1 && dr === dir && target !== '') return true;
+          return false;
+        }
+        case 'r':
+          if (dr === 0 || dc === 0) return isPathClear(r1, c1, r2, c2);
+          return false;
+        case 'n':
+          return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
+        case 'b':
+          if (Math.abs(dr) === Math.abs(dc)) return isPathClear(r1, c1, r2, c2);
+          return false;
+        case 'q':
+          if (dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc)) {
+            return isPathClear(r1, c1, r2, c2);
+          }
+          return false;
+        case 'k':
+          return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
+        default:
+          return false;
+      }
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(function() {
+        if (!gameStarted) return;
+
+        if (currentTurn === 'white') {
+          if (whiteTime > 0) whiteTime--;
+          else handleTimeout('Black');
+        } else {
+          if (blackTime > 0) blackTime--;
+          else handleTimeout('White');
+        }
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      function formatNum(num) {
+        return num < 10 ? '0' + num : '' + num;
+      }
+      var whiteMin = Math.floor(whiteTime / 60);
+      var whiteSec = whiteTime % 60;
+      var blackMin = Math.floor(blackTime / 60);
+      var blackSec = blackTime % 60;
+      timerWhiteEl.textContent = formatNum(whiteMin) + ':' + formatNum(whiteSec);
+      timerBlackEl.textContent = formatNum(blackMin) + ':' + formatNum(blackSec);
+    }
+
+    function handleTimeout(winner) {
+      clearInterval(timerInterval);
+      gameStarted = false;
+      var t = dict[currentLang];
+      logEvent(t.timeoutMsg + winner);
+      alert(t.timeoutMsg + winner);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">");
+    }
+
+    setInterval(function() {
+      var counterEl = document.getElementById('spectator-counter');
+      if (counterEl) {
+        var count = parseInt(counterEl.textContent.replace(/[^0-9]/g, '')) || 248;
+        count += Math.floor(Math.random() * 5) - 2;
+        var unit = dict[currentLang].spectatorUnit;
+        counterEl.textContent = count + ' ' + unit;
+      }
+    }, 4500);
+
+    function initGame() {
+      board = startingBoard.map(function(row) {
+        return row.slice();
+      });
+      currentTurn = 'white';
+      selectedSquare = null;
+      whiteTime = 600;
+      blackTime = 600;
+      gameStarted = false;
+      isCountingDown = false;
+      countdownOverlay.style.display = 'none';
+      updateTimerDisplay();
+      drawBoard();
+      checkGameStartCondition();
+    }
+  </script>
+</body>
+</html>
