@@ -833,10 +833,6 @@
         alertPlayerWatchDisabled: 'أنت داخل بصفة "لاعب"، لا يمكنك النقر على زر المشاهدة!',
         alertSpectatorMove: 'أنت داخل بصفة "مشاهد"، لا يمكنك تحريك القطع!',
         alertWaitingOpponent: 'لم يتم اكتمال اللاعبين بعد أو جاري العد التنازلي!',
-        alertNotYourTurnWhite: 'ليس دورك! انتظر حتى يلعب اللاعب الأسود.',
-        alertNotYourTurnBlack: 'ليس دورك! انتظر حتى يلعب اللاعب الأبيض.',
-        logWaiting: '[النظام] بانتظار اكتمال دخول الخصم لبدء العد التنازلي...',
-        logCountdown: '[النظام] اكتمل الطرفان! تبدأ المباراة خلال 5 ثوانٍ...',
         logStarted: '[النظام] انطلاق المباراة أونلاين! الدور للاعب الأبيض.',
         logCapture: ' أخذ قطعة الخصم',
         timeoutMsg: 'انتهى الوقت! فاز اللاعب: '
@@ -872,17 +868,13 @@
         alertPlayerWatchDisabled: 'You entered as a "Player", you cannot click watch button!',
         alertSpectatorMove: 'You are logged in as a "Spectator"; you cannot move pieces!',
         alertWaitingOpponent: 'Players not complete yet or countdown in progress!',
-        alertNotYourTurnWhite: 'Not your turn! Wait for Black to make a move.',
-        alertNotYourTurnBlack: 'Not your turn! Wait for White to make a move.',
-        logWaiting: '[System] Waiting for opponent to start countdown...',
-        logCountdown: '[System] Both players ready! Match starting in 5 seconds...',
         logStarted: '[System] Online match started! White moves first.',
         logCapture: ' captured opponent piece',
         timeoutMsg: 'Time Out! Winner: '
       }
     };
 
-    // الاستماع الفوري والتزامن التام للطاولات بين الأجهزة
+    // مزامنة حالة الطاولات فورياً
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       if (val && Array.isArray(val) && val.length > 0) {
@@ -952,7 +944,6 @@
       element.classList.add('selected');
     }
 
-    // مغادرة الطاولة فوراً وبدون أي شروط أو قيود
     function tryLeaveTable() {
       if (currentTableId !== null && currentUserRole === 'player') {
         var tableIndex = tablesData.findIndex(function(item) { return item.id === currentTableId; });
@@ -1021,7 +1012,6 @@
 
     function onSeatClick(tableId, color) {
       var t = dict[currentLang];
-
       if (currentUserRole === 'spectator') {
         alert(t.alertSpectatorOnly);
         return;
@@ -1130,23 +1120,41 @@
       input.value = '';
     }
 
+    // مزامنة حالة اللعبة والرقعة والحركات تماماً بين الأجهزة
     function listenToGameState(tableId) {
       db.ref('game_state/table_' + tableId).on('value', function(snapshot) {
         var state = snapshot.val();
-        if (state && state.board) {
-          board = state.board;
+        if (state) {
+          if (state.board) {
+            board = state.board;
+          }
           currentTurn = state.currentTurn || 'white';
-          drawBoard();
+          
+          if (state.status === 'playing') {
+            gameStarted = true;
+            isCountingDown = false;
+            countdownOverlay.style.display = 'none';
+            gameStatusBadge.textContent = dict[currentLang].statusLive;
+            drawBoard();
+          } else if (state.status === 'counting') {
+            isCountingDown = true;
+            gameStatusBadge.textContent = dict[currentLang].statusCounting;
+            countdownOverlay.style.display = 'flex';
+            countdownNumber.textContent = state.countdown || 5;
+          }
         }
       });
     }
 
-    function updateGameStateOnFirebase() {
+    function updateGameStateOnFirebase(extraData) {
       if (currentTableId) {
-        db.ref('game_state/table_' + currentTableId).set({
+        var payload = {
           board: board,
-          currentTurn: currentTurn
-        });
+          currentTurn: currentTurn,
+          status: gameStarted ? 'playing' : (isCountingDown ? 'counting' : 'waiting')
+        };
+        if (extraData) Object.assign(payload, extraData);
+        db.ref('game_state/table_' + currentTableId).update(payload);
       }
     }
 
@@ -1159,8 +1167,46 @@
 
         document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
         document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
-        checkGameStartCondition();
+        
+        // التحقق من اكتمال اللاعبين لبدء العد التنازلي (اللاعب الأبيض يتحكم بالبدء الموحد)
+        if (table.white !== null && table.black !== null) {
+          if (!gameStarted && !isCountingDown && currentUserRole === 'player' && playerGameColor === 'white') {
+            startMasterCountdown();
+          }
+        } else {
+          gameStarted = false;
+          isCountingDown = false;
+          if (countdownInterval) clearInterval(countdownInterval);
+          countdownOverlay.style.display = 'none';
+          gameStatusBadge.textContent = t.statusWaiting;
+        }
       }
+    }
+
+    // العد التنازلي الموحد الذي يرسل الحالة للسيرفر لكي يراها الطرفان
+    function startMasterCountdown() {
+      isCountingDown = true;
+      var counter = 5;
+      
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(function() {
+        counter--;
+        if (counter > 0) {
+          updateGameStateOnFirebase({ countdown: counter, status: 'counting' });
+        } else {
+          clearInterval(countdownInterval);
+          gameStarted = true;
+          isCountingDown = false;
+          
+          board = startingBoard.map(function(row) { return row.slice(); });
+          currentTurn = 'white';
+          
+          updateGameStateOnFirebase({ status: 'playing', board: board, currentTurn: currentTurn });
+          logEvent(dict[currentLang].logStarted);
+          startTimer();
+          drawBoard();
+        }
+      }, 1000);
     }
 
     var unicodePieces = {
@@ -1267,55 +1313,6 @@
           cardWhite.classList.remove('active-turn');
         }
       }
-    }
-
-    function checkGameStartCondition() {
-      var table = tablesData.find(function(item) { return item.id === currentTableId; });
-      var t = dict[currentLang];
-
-      if (table && table.white !== null && table.black !== null) {
-        if (!gameStarted && !isCountingDown) {
-          startCountdown5Seconds();
-        }
-      } else {
-        gameStarted = false;
-        isCountingDown = false;
-        if (countdownInterval) clearInterval(countdownInterval);
-        countdownOverlay.style.display = 'none';
-        gameStatusBadge.textContent = t.statusWaiting;
-      }
-    }
-
-    function startCountdown5Seconds() {
-      isCountingDown = true;
-      var t = dict[currentLang];
-      gameStatusBadge.textContent = t.statusCounting;
-
-      var counter = 5;
-      countdownNumber.textContent = counter;
-      countdownOverlay.style.display = 'flex';
-
-      if (countdownInterval) clearInterval(countdownInterval);
-      countdownInterval = setInterval(function() {
-        counter--;
-        if (counter > 0) {
-          countdownNumber.textContent = counter;
-        } else {
-          clearInterval(countdownInterval);
-          countdownOverlay.style.display = 'none';
-          isCountingDown = false;
-          gameStarted = true;
-          gameStatusBadge.textContent = t.statusLive;
-          logEvent(t.logStarted);
-          
-          board = startingBoard.map(function(row) { return row.slice(); });
-          currentTurn = 'white';
-          updateGameStateOnFirebase();
-          
-          startTimer();
-          drawBoard();
-        }
-      }, 1000);
     }
 
     function onSquareClick(r, c) {
@@ -1494,7 +1491,6 @@
       countdownOverlay.style.display = 'none';
       updateTimerDisplay();
       drawBoard();
-      checkGameStartCondition();
     }
   </script>
 </body>
