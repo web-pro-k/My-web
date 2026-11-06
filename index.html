@@ -395,8 +395,8 @@
     }
 
     .btn-logout {
-      background: #2b2e3e;
-      border: 1px solid #444;
+      background: var(--accent-red);
+      border: none;
       color: #fff;
       padding: 6px 14px;
       font-size: 0.8rem;
@@ -406,7 +406,7 @@
     }
 
     .btn-logout:hover {
-      background: #393d52;
+      opacity: 0.9;
     }
 
     .arena-container {
@@ -793,7 +793,6 @@
     ];
 
     var tablesData = JSON.parse(JSON.stringify(defaultTables));
-
     var currentTableId = null;
     var currentUserRole = 'player'; 
     var playerGameColor = 'white'; 
@@ -834,7 +833,6 @@
         alertPlayerWatchDisabled: 'أنت داخل بصفة "لاعب"، لا يمكنك النقر على زر المشاهدة!',
         alertSpectatorMove: 'أنت داخل بصفة "مشاهد"، لا يمكنك تحريك القطع!',
         alertWaitingOpponent: 'لم يتم اكتمال اللاعبين بعد أو جاري العد التنازلي!',
-        alertCantLeave: '⚠️ لا يمكنك مغادرة اللعبة الآن لأن المباراة بدأت أو جارية! يمكنك المغادرة فقط عند انتهاء المباراة.',
         alertNotYourTurnWhite: 'ليس دورك! انتظر حتى يلعب اللاعب الأسود.',
         alertNotYourTurnBlack: 'ليس دورك! انتظر حتى يلعب اللاعب الأبيض.',
         logWaiting: '[النظام] بانتظار اكتمال دخول الخصم لبدء العد التنازلي...',
@@ -874,7 +872,6 @@
         alertPlayerWatchDisabled: 'You entered as a "Player", you cannot click watch button!',
         alertSpectatorMove: 'You are logged in as a "Spectator"; you cannot move pieces!',
         alertWaitingOpponent: 'Players not complete yet or countdown in progress!',
-        alertCantLeave: '⚠️ You cannot leave now because the match has started! You can only leave after the match ends.',
         alertNotYourTurnWhite: 'Not your turn! Wait for Black to make a move.',
         alertNotYourTurnBlack: 'Not your turn! Wait for White to make a move.',
         logWaiting: '[System] Waiting for opponent to start countdown...',
@@ -885,6 +882,7 @@
       }
     };
 
+    // الاستماع الفوري والتزامن التام للطاولات بين الأجهزة
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       if (val && Array.isArray(val) && val.length > 0) {
@@ -954,12 +952,8 @@
       element.classList.add('selected');
     }
 
+    // مغادرة الطاولة فوراً وبدون أي شروط أو قيود
     function tryLeaveTable() {
-      var t = dict[currentLang];
-      if (gameStarted || isCountingDown) {
-        alert(t.alertCantLeave);
-        return;
-      }
       if (currentTableId !== null && currentUserRole === 'player') {
         var tableIndex = tablesData.findIndex(function(item) { return item.id === currentTableId; });
         if (tableIndex !== -1) {
@@ -1314,7 +1308,6 @@
           gameStatusBadge.textContent = t.statusLive;
           logEvent(t.logStarted);
           
-          // تهيئة الرقعة فور انتهاء العد لضمان ظهورها عند كلا اللاعبين
           board = startingBoard.map(function(row) { return row.slice(); });
           currentTurn = 'white';
           updateGameStateOnFirebase();
