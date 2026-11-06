@@ -397,7 +397,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       position: relative;
     }
 
@@ -407,7 +407,7 @@
       background: var(--card-bg);
       border: 2px solid var(--card-border);
       border-radius: 10px;
-      padding: 10px 16px;
+      padding: 8px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -426,31 +426,31 @@
     }
 
     .player-badge {
-      width: 42px;
-      height: 42px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 22px;
       background: #2b2e3e;
       border: 1px solid #444;
     }
 
     .player-meta h3 {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     .player-meta span {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
     }
 
     .player-timer {
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: bold;
       background: #0e1017;
-      padding: 5px 14px;
+      padding: 4px 12px;
       border-radius: 6px;
       font-family: monospace;
       letter-spacing: 1px;
@@ -852,7 +852,7 @@
       }
     };
 
-    // مزامنة الطاولات
+    // الاستماع الدائم للطاولات
     db.ref('tables').on('value', function(snapshot) {
       var val = snapshot.val();
       var parsedTables = [];
@@ -1033,25 +1033,31 @@
         return;
       }
 
+      // حفظ المعطيات في متغيرات ثابتة قبل إغلاق النافذة
+      var chosenTableId = pendingTableId;
+      var chosenColor = pendingColor;
+
       currentUserName = nameVal;
-      playerGameColor = pendingColor;
-      currentTableId = pendingTableId;
+      playerGameColor = chosenColor;
+      currentTableId = chosenTableId;
 
-      var tableIdx = pendingTableId - 1;
-      db.ref('tables/' + tableIdx + '/id').set(pendingTableId);
-      db.ref('tables/' + tableIdx + '/' + pendingColor).set(currentUserName);
+      var tableIdx = chosenTableId - 1;
+      db.ref('tables/' + tableIdx + '/id').set(chosenTableId);
+      db.ref('tables/' + tableIdx + '/' + chosenColor).set(currentUserName);
 
-      var tableIndex = tablesData.findIndex(function(item) { return item.id === pendingTableId; });
+      var tableIndex = tablesData.findIndex(function(item) { return item.id === chosenTableId; });
       if (tableIndex !== -1) {
-        tablesData[tableIndex][pendingColor] = currentUserName;
+        tablesData[tableIndex][chosenColor] = currentUserName;
       }
 
       closeNameModal();
-      startMatchPage(pendingTableId);
+      // تمرير رقم الطاولة المحفوظ حصراً
+      startMatchPage(chosenTableId);
     }
 
     function closeNameModal() {
       document.getElementById('nameModal').style.display = 'none';
+      document.getElementById('playerInputName').value = '';
       pendingTableId = null;
       pendingColor = null;
     }
@@ -1068,6 +1074,9 @@
     }
 
     function startMatchPage(tableId) {
+      if (!tableId) tableId = currentTableId;
+      currentTableId = tableId;
+
       document.getElementById('page-tables').style.display = 'none';
       document.getElementById('page-game').style.display = 'flex';
 
@@ -1091,6 +1100,7 @@
     }
 
     function listenToChat(tableId) {
+      if (!tableId) return;
       const chatRef = db.ref('chats/table_' + tableId);
       chatRef.on('value', function(snapshot) {
         const chatBox = document.getElementById('chat-box');
@@ -1135,6 +1145,7 @@
     }
 
     function listenToGameState(tableId) {
+      if (!tableId) return;
       db.ref('game_state/table_' + tableId).on('value', function(snapshot) {
         var state = snapshot.val();
         if (state) {
@@ -1173,12 +1184,12 @@
           blackTime: blackTime
         };
         if (extraData) Object.assign(payload, extraData);
-        // نستخدم .set() لضمان حفظ المصفوفة بنجاح وتفادي مشاكل .update() مع 2D Arrays
         db.ref('game_state/table_' + currentTableId).set(payload);
       }
     }
 
     function updateCurrentGameFromFirebase() {
+      if (!currentTableId) return;
       var table = tablesData.find(function(t) { return t.id === currentTableId; });
       var t = dict[currentLang];
       if (table) {
@@ -1188,11 +1199,10 @@
         document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
         document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
         
-        // بمجرد اكتمال وجود اللاعبين الاثنين (الأبيض والأسود)
+        // عند وجود كلا اللاعبين على نفس الطاولة
         if (table.white && table.black) {
           db.ref('game_state/table_' + currentTableId).once('value', function(snapshot) {
             var state = snapshot.val();
-            // أي لاعب (سواء أبيض أو أسود) يقوم ببدء اللعبة إذا لم تكن قد بدأت بعد
             if (!state || state.status !== 'playing') {
               var freshBoard = startingBoard.map(function(row) { return row.slice(); });
               db.ref('game_state/table_' + currentTableId).set({
