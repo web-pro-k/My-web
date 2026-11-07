@@ -13,6 +13,7 @@
       --accent-green: #2ecc71;
       --accent-red: #e74c3c;
       --accent-gold: #f1c40f;
+      --accent-orange: #e67e22;
       --text-main: #f0f2f5;
       --text-muted: #8b92a5;
     }
@@ -356,7 +357,7 @@
       border: 1px solid var(--card-border);
       border-radius: 8px;
       padding: 10px 18px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -383,6 +384,28 @@
 
     .btn-logout:hover {
       opacity: 0.9;
+    }
+
+    .disconnect-banner {
+      display: none;
+      width: 100%;
+      max-width: 1050px;
+      background: rgba(230, 126, 34, 0.2);
+      border: 2px solid var(--accent-orange);
+      color: #f39c12;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 0.95rem;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(230, 126, 34, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0); }
     }
 
     .arena-container {
@@ -678,6 +701,11 @@
       <button class="btn-logout" id="btn-logout" onclick="tryLeaveTable()">مغادرة الطاولة ↩️</button>
     </div>
 
+    <!-- شريط المهلة التنازلية عند مغادرة أحد اللاعبين -->
+    <div class="disconnect-banner" id="disconnect-banner">
+      ⚠️ غادر اللاعب (<span id="disconnect-player-name">--</span>). أمامه <span id="disconnect-countdown" style="font-size: 1.15rem; color: #fff; text-decoration: underline;">60</span> ثانية للعودة وإلا سيتم إعلان فوزك وتصفير الطاولة!
+    </div>
+
     <div class="arena-container">
       
       <div class="game-area" id="game-area">
@@ -772,6 +800,8 @@
     var pendingTableId = null;
     var pendingColor = null;
 
+    var disconnectInterval = null; // موقت الـ 60 ثانية
+
     var currentLang = 'ar';
     var dict = {
       ar: {
@@ -810,7 +840,10 @@
         alertEnterName: 'يرجى إدخال اسمك أولاً!',
         logStarted: '[النظام] اكتمل الطرفان! انطلقت المباراة فوراً.',
         logCapture: ' أخذ قطعة الخصم',
-        timeoutMsg: 'انتهى الوقت! فاز اللاعب: '
+        timeoutMsg: 'انتهى الوقت! فاز اللاعب: ',
+        playerLeftNotice: 'غادر اللاعب الطاولة! أمامه 60 ثانية للعودة.',
+        playerReturnedNotice: '[النظام] عاد اللاعب، تستمر المباراة فوراً!',
+        winnerByAbandon: 'انتهت مهلة الدقيقة! فاز اللاعب: '
       },
       en: {
         loginTitle: '🏆 Chess Championship Online',
@@ -848,7 +881,10 @@
         alertEnterName: 'Please enter your name first!',
         logStarted: '[System] Both players ready! Match started instantly.',
         logCapture: ' captured opponent piece',
-        timeoutMsg: 'Time Out! Winner: '
+        timeoutMsg: 'Time Out! Winner: ',
+        playerLeftNotice: 'Player left the table! 60s given to return.',
+        playerReturnedNotice: '[System] Player returned, match resumes!',
+        winnerByAbandon: '1-minute timeout expired! Winner: '
       }
     };
 
@@ -936,24 +972,70 @@
     function tryLeaveTable() {
       if (currentTableId !== null && currentUserRole === 'player') {
         var tableIdx = currentTableId - 1;
-        db.ref('tables/' + tableIdx + '/' + playerGameColor).set(null);
-        
-        var otherColor = playerGameColor === 'white' ? 'black' : 'white';
+        var otherColor = (playerGameColor === 'white') ? 'black' : 'white';
         var table = tablesData.find(function(item) { return item.id === currentTableId; });
-        if (!table || !table[otherColor]) {
-          db.ref('game_state/table_' + currentTableId).set({
-            status: 'waiting',
-            board: startingBoard,
-            currentTurn: 'white'
+        var hasOpponent = table && table[otherColor];
+
+        // إذا كانت اللعبة جارية والخصم موجود، نبدأ مهلة 60 ثانية قبل إعلان فوز الخصم
+        if (gameStarted && hasOpponent) {
+          db.ref('game_state/table_' + currentTableId + '/disconnectInfo').set({
+            leaverColor: playerGameColor,
+            leaverName: currentUserName,
+            deadline: Date.now() + 60000
           });
-          db.ref('chats/table_' + currentTableId).remove();
+          db.ref('tables/' + tableIdx + '/' + playerGameColor).set(null);
+        } else {
+          // لم تبدأ اللعبة بعد، إخلاء عادي
+          db.ref('tables/' + tableIdx + '/' + playerGameColor).set(null);
+          if (!hasOpponent) {
+            resetEntireTable(currentTableId);
+          }
         }
       }
       goToTablesPage();
     }
 
+    // إغلاق النافذة أو مغادرة التبويب يتم تسجيلها كمهلة للعودة
+    window.addEventListener('beforeunload', function() {
+      if (currentTableId && currentUserRole === 'player' && gameStarted) {
+        var table = tablesData.find(function(t) { return t.id === currentTableId; });
+        var otherColor = (playerGameColor === 'white') ? 'black' : 'white';
+        if (table && table[otherColor]) {
+          db.ref('game_state/table_' + currentTableId + '/disconnectInfo').set({
+            leaverColor: playerGameColor,
+            leaverName: currentUserName,
+            deadline: Date.now() + 60000
+          });
+          db.ref('tables/' + (currentTableId - 1) + '/' + playerGameColor).set(null);
+        }
+      }
+    });
+
+    function resetEntireTable(tableId) {
+      if (!tableId) return;
+      var tableIdx = tableId - 1;
+      db.ref('tables/' + tableIdx).set({
+        id: tableId,
+        white: null,
+        black: null
+      });
+      db.ref('game_state/table_' + tableId).set({
+        status: 'waiting',
+        board: startingBoard,
+        currentTurn: 'white',
+        whiteTime: 600,
+        blackTime: 600,
+        disconnectInfo: null
+      });
+      db.ref('chats/table_' + tableId).remove();
+    }
+
     function goToTablesPage() {
       if (timerInterval) clearInterval(timerInterval);
+      if (disconnectInterval) clearInterval(disconnectInterval);
+      
+      document.getElementById('disconnect-banner').style.display = 'none';
+
       if (currentTableId) {
         db.ref('chats/table_' + currentTableId).off();
         db.ref('game_state/table_' + currentTableId).off();
@@ -1033,7 +1115,7 @@
         return;
       }
 
-      // حفظ المعطيات في متغيرات ثابتة قبل إغلاق النافذة
+      // حفظ المعطيات في متغيرات ثابتة قبل إغلاق النافذة منعاً لظهور null
       var chosenTableId = pendingTableId;
       var chosenColor = pendingColor;
 
@@ -1045,13 +1127,15 @@
       db.ref('tables/' + tableIdx + '/id').set(chosenTableId);
       db.ref('tables/' + tableIdx + '/' + chosenColor).set(currentUserName);
 
+      // في حال عاد اللاعب ضمن الدقيقة، نلغي حالة الانقطاع
+      db.ref('game_state/table_' + chosenTableId + '/disconnectInfo').remove();
+
       var tableIndex = tablesData.findIndex(function(item) { return item.id === chosenTableId; });
       if (tableIndex !== -1) {
         tablesData[tableIndex][chosenColor] = currentUserName;
       }
 
       closeNameModal();
-      // تمرير رقم الطاولة المحفوظ حصراً
       startMatchPage(chosenTableId);
     }
 
@@ -1170,8 +1254,55 @@
             gameStatusBadge.style.background = '#34495e';
             drawBoard();
           }
+
+          // معالجة مهلة الـ 60 ثانية لمغادرة اللاعب
+          handleDisconnectLogic(state.disconnectInfo, tableId);
         }
       });
+    }
+
+    function handleDisconnectLogic(info, tableId) {
+      var banner = document.getElementById('disconnect-banner');
+      var countdownEl = document.getElementById('disconnect-countdown');
+      var nameEl = document.getElementById('disconnect-player-name');
+
+      if (info && info.deadline) {
+        // اللاعب غادر ومهلة الدقيقة جارية
+        if (info.leaverName !== currentUserName) {
+          banner.style.display = 'block';
+          nameEl.textContent = info.leaverName;
+        }
+
+        if (disconnectInterval) clearInterval(disconnectInterval);
+
+        disconnectInterval = setInterval(function() {
+          var remaining = Math.max(0, Math.ceil((info.deadline - Date.now()) / 1000));
+          countdownEl.textContent = remaining;
+
+          if (remaining <= 0) {
+            clearInterval(disconnectInterval);
+            banner.style.display = 'none';
+
+            // إذا كنت أنت اللاعب المتبقي، يُعلن فوزك ويتم تصفير الطاولة بالكامل
+            if (currentUserRole === 'player' && info.leaverName !== currentUserName) {
+              var t = dict[currentLang];
+              var winMsg = t.winnerByAbandon + currentUserName + ' 🏆';
+              alert(winMsg);
+              logEvent(winMsg);
+              resetEntireTable(tableId);
+              goToTablesPage();
+            }
+          }
+        }, 1000);
+
+      } else {
+        // عاد اللاعب أو لا توجد حالة انقطاع
+        if (banner.style.display === 'block') {
+          logEvent(dict[currentLang].playerReturnedNotice);
+        }
+        banner.style.display = 'none';
+        if (disconnectInterval) clearInterval(disconnectInterval);
+      }
     }
 
     function updateGameStateOnFirebase(extraData) {
@@ -1199,7 +1330,7 @@
         document.getElementById('sub-white').textContent = table.white ? t.statusReadySub : t.statusWaitingSub;
         document.getElementById('sub-black').textContent = table.black ? t.statusReadySub : t.statusWaitingSub;
         
-        // عند وجود كلا اللاعبين على نفس الطاولة
+        // عند وجود كلا اللاعبين على نفس الطاولة تبدأ المباراة فوراً
         if (table.white && table.black) {
           db.ref('game_state/table_' + currentTableId).once('value', function(snapshot) {
             var state = snapshot.val();
@@ -1210,12 +1341,12 @@
                 board: freshBoard,
                 currentTurn: 'white',
                 whiteTime: 600,
-                blackTime: 600
+                blackTime: 600,
+                disconnectInfo: null
               });
             }
           });
-        } else {
-          gameStarted = false;
+        } else if (!gameStarted) {
           gameStatusBadge.textContent = t.statusWaiting;
           gameStatusBadge.style.background = '#34495e';
         }
